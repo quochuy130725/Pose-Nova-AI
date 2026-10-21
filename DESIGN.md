@@ -21,3 +21,6 @@ Phong cách giao diện lấy cảm hứng từ **Neo-Brutalist Cyber-Streetwear
 * **Sticker Offset Shadow:** `3px 3px 0 var(--ink)` (áp dụng cho các thẻ tag sản phẩm gắn trên ảnh).
 * **Card Border:** Viền đen đặc `2px solid var(--ink)`.
 * **Border Radius:** Bo góc tiêu chuẩn `--radius: .625rem` (10px) kết hợp góc vuông sắc cạnh tạo nét cá tính công nghiệp.
+
+
+
