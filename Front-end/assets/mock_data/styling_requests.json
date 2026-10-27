@@ -1,0 +1,89 @@
+[
+  {
+    "requestId": "REQ-8452",
+    "client": {
+      "userId": "USR-101",
+      "fullName": "Alex Đỗ",
+      "avatarUrl": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
+      "role": "REGULAR_USER"
+    },
+    "stylist": {
+      "userId": "STY-204",
+      "fullName": "Maya Trần",
+      "role": "STYLIST",
+      "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+      "rating": 4.9,
+      "reviewCount": 128,
+      "verifiedBadge": true
+    },
+    "conceptDescription": "Streetwear Cyberpunk cho buổi ra mắt BST Thu Đông 2026. Yêu cầu: form dáng oversize, bảng màu đen tuyền phối điểm nhấn vàng chanh acid & xanh ngọc, kết hợp phụ kiện kim loại và giày chunky. Cần 3 góc dáng chụp nổi bật vóc dáng người cao 1m75.",
+    "occasion": "Sự kiện Ra mắt BST / Streetwear",
+    "vibe": "Cyber-Streetwear / Neo-Brutalist",
+    "bodyType": "Thon gọn, cao 1m75",
+    "budgetVnd": 2500000,
+    "platformFeeRate": 0.15,
+    "stylistNetEarningsVnd": 2125000,
+    "status": "IN_PROGRESS",
+    "escrowStatus": "ESCROW_DEPOSITED",
+    "escrowPercentageFunded": 100,
+    "paymentTransaction": {
+      "transactionId": "TXN-SEPAY-8452-DEP",
+      "gateway": "SePay VietQR",
+      "amountVnd": 2500000,
+      "status": "SUCCESS",
+      "paidAt": "2026-10-18T10:20:00Z"
+    },
+    "geminiAiDraft": {
+      "enhancedBrief": "Sự kết hợp táo bạo giữa phong cách Neo-Brutalist và Cyberpunk đường phố. Tận dụng tương phản cao giữa vải kỹ thuật đen mờ (Matte Technical Ink) và chi tiết dạ quang Acid Lime để tôn cấu trúc cơ thể. Các góc chụp tạo dáng góc thấp (low-angle) nhằm khuếch đại tỷ lệ chân và phong thái tự tin.",
+      "colorPalette": [
+        {"name": "Pitch Black", "hex": "#000000"},
+        {"name": "Electric Acid", "hex": "#E2FF00"},
+        {"name": "Cyber Jade", "hex": "#00E676"},
+        {"name": "Technical Paper", "hex": "#E5F8EE"}
+      ],
+      "recommendedVibes": ["Technical Cargo", "Acid Layering", "Cyber Atelier"],
+      "suggestedPoses": [
+        "Low-angle dynamic with hands in pockets",
+        "Asymmetric shoulder tilt with head turned 45°",
+        "Walking stride forward with direct camera gaze"
+      ]
+    },
+    "milestonesSummary": {
+      "totalStages": 3,
+      "completedStages": 1,
+      "activeStageIndex": 1,
+      "revisionUsed": 1,
+      "maxRevisions": 2
+    },
+    "createdAt": "2026-10-18T09:00:00Z"
+  },
+  {
+    "requestId": "REQ-8453",
+    "client": {
+      "userId": "USR-102",
+      "fullName": "Linh Nguyễn",
+      "avatarUrl": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80",
+      "role": "REGULAR_USER"
+    },
+    "stylist": {
+      "userId": "STY-204",
+      "fullName": "Maya Trần",
+      "role": "STYLIST",
+      "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+      "rating": 4.9,
+      "reviewCount": 128,
+      "verifiedBadge": true
+    },
+    "conceptDescription": "Bộ ảnh Lookbook tối giản Minimalist Techwear đi làm kết hợp cafe cuối tuần. Tông màu đơn sắc trắng - xám xi măng - đen, dáng đứng thoải mái.",
+    "occasion": "Daily Smart-Casual",
+    "vibe": "Minimalist Techwear",
+    "bodyType": "Cân đối, cao 1m68",
+    "budgetVnd": 1800000,
+    "platformFeeRate": 0.15,
+    "stylistNetEarningsVnd": 1530000,
+    "status": "PENDING_ACCEPTANCE",
+    "escrowStatus": "AWAITING_DEPOSIT",
+    "escrowPercentageFunded": 0,
+    "createdAt": "2026-10-21T11:00:00Z"
+  }
+]

@@ -1,0 +1,83 @@
+[
+  {
+    "milestoneId": "MS-8452-01",
+    "requestId": "REQ-8452",
+    "stageOrder": 1,
+    "stageName": "1. Concept & Moodboard",
+    "payoutPercent": 30,
+    "payoutAmountVnd": 750000,
+    "status": "APPROVED",
+    "description": "Visual direction, color scheme, and aesthetic moodboard inspired by Neo-Brutalist Cyber-Streetwear.",
+    "deliverableTitle": "Cyber-Streetwear Visual Moodboard v1.2",
+    "deliverableImageUrl": "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80",
+    "revisionCount": 0,
+    "maxRevisions": 2,
+    "submittedAt": "2026-10-18T14:30:00Z",
+    "approvedAt": "2026-10-19T09:15:00Z",
+    "payoutTransactionId": "TXN-ESCROW-REL-01"
+  },
+  {
+    "milestoneId": "MS-8452-02",
+    "requestId": "REQ-8452",
+    "stageOrder": 2,
+    "stageName": "2. Outfit Selection & Tags",
+    "payoutPercent": 30,
+    "payoutAmountVnd": 750000,
+    "status": "SUBMITTED",
+    "description": "Curated garment selection with e-commerce affiliate product tags, pricing, and sizing recommendations.",
+    "deliverableTitle": "Selected Streetwear Ensemble & Product Links",
+    "deliverableImageUrl": "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=800&q=80",
+    "revisionCount": 1,
+    "maxRevisions": 2,
+    "lastFeedback": "Client requested swapping cargo pants to waterproof technical fabric with reflective trim.",
+    "productTags": [
+      {
+        "tagId": "TAG-001",
+        "productName": "Acid-Stitch Oversized Bomber",
+        "priceVnd": 1250000,
+        "affiliateUrl": "https://shop.example.com/bomber-acid",
+        "coordinateX": 0.48,
+        "coordinateY": 0.35
+      },
+      {
+        "tagId": "TAG-002",
+        "productName": "Technical Cargo Pants (Black/Neon)",
+        "priceVnd": 890000,
+        "affiliateUrl": "https://shop.example.com/cargo-pants",
+        "coordinateX": 0.52,
+        "coordinateY": 0.68
+      },
+      {
+        "tagId": "TAG-003",
+        "productName": "Chunky Platform Cyber Boots",
+        "priceVnd": 1450000,
+        "affiliateUrl": "https://shop.example.com/chunky-boots",
+        "coordinateX": 0.50,
+        "coordinateY": 0.88
+      }
+    ],
+    "submittedAt": "2026-10-21T08:00:00Z",
+    "approvedAt": null,
+    "payoutTransactionId": null
+  },
+  {
+    "milestoneId": "MS-8452-03",
+    "requestId": "REQ-8452",
+    "stageOrder": 3,
+    "stageName": "3. Final Lookbook & Pose",
+    "payoutPercent": 40,
+    "payoutAmountVnd": 1000000,
+    "status": "LOCKED",
+    "description": "High-fidelity lookbook imagery and 33-keypoint 3D Pose Template for AI camera recreation.",
+    "deliverableTitle": "Master Lookbook & On-Device Pose Model",
+    "deliverableImageUrl": "https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=800&q=80",
+    "isWatermarked": true,
+    "revisionCount": 0,
+    "maxRevisions": 2,
+    "poseTemplateId": "POSE-TMPL-8452",
+    "landmarksCount": 33,
+    "submittedAt": null,
+    "approvedAt": null,
+    "payoutTransactionId": null
+  }
+]

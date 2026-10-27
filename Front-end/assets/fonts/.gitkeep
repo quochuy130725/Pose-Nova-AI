@@ -1,0 +1,2 @@
+# Place custom TTF/OTF font files here (Archivo, JetBrains Mono) if bundling offline.
+# The app also defaults to GoogleFonts for dynamic rendering.
