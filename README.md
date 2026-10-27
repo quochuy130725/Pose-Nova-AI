@@ -60,8 +60,6 @@ The platform operates across **4 specialized workflows**, with **Workflow 3 serv
   (Financial Safety Net & Partial Refund Engine)
 
 
-
-
 ## 🏗️ Core Workflows & System Architecture
 
 | Workflow | Name | Role in Ecosystem | Key Technical Components |
@@ -70,4 +68,42 @@ The platform operates across **4 specialized workflows**, with **Workflow 3 serv
 | **Workflow 2** | Lookbook Publishing & Affiliate | **Supply-Side Engine:** Stylists upload outfit photos, validate human skeletal landmarks, and pin affiliate product links. | Automated OpenGraph Scraper (title, price, thumbnail), 33-Node JSONB Extractor, Normalized `(x, y)` Coordinates. |
 | **Workflow 3 ⭐** | **3-Stage Styling & Escrow** | **CORE BUSINESS FLOW:** End-to-end custom styling request, AI brief enhancement, 100% VietQR escrow deposit, and rolling 30-30-40 payouts. | Gemini AI Co-pilot, SePay VietQR Webhook, Prisma Interactive ACID Transactions, Pessimistic Wallet Locking. |
 | **Workflow 4** | Revision Quota & Dispute | **Risk Mitigation:** Enforces the 2-revision cap, freezes escrow funds upon conflict, and executes automated partial refunds. | Revision Counter State Machine, `ESCROW_FROZEN` Lock, 48-Hour SLA Auto-Release Cronjob. |
+
+### 🛣️ 3. End-to-End Main Flow
+
+The complete Happy Path journey connecting the Client (Alex Đỗ), the System & AI Engine, and the Stylist (Maya Trần).
+
+```text
+[STEP 1: DISCOVERY & AI POSE TRIAL]
+  └── Client browses Staggered Lookbooks & tests 33-Landmark AI Pose Camera (30 FPS)
+                  |
+                  v
+[STEP 2: STYLING BRIEF & 100% ESCROW DEPOSIT]
+  ├── Client inputs body metrics (175cm, 65kg), occasion & budget (2,500,000 VND)
+  ├── Gemini AI Co-pilot refines brief & generates 4-color hex palette
+  └── Client scans SePay VietQR → System locks 100% fund in Escrow (ESCROW_LOCKED)
+                  |
+                  v
+[STEP 3: STYLIST 3-STAGE MILESTONE EXECUTION]
+  ├── Stage 01 (30%): Deliver Moodboard, Vibe & Color Concept
+  ├── Stage 02 (30%): Deliver Outfit Curation + Pin Affiliate Product Tags
+  └── Stage 03 (40%): Deliver Final Lookbook + Extract 33 AI Pose Landmarks
+                  |
+                  v
+[STEP 4: ROLLING APPROVAL & AUTOMATED ESCROW DISBURSEMENT]
+  ├── Client approves Stage 01 → Release 30% Net (637.5K) to Stylist & Unlock Stage 02
+  ├── Client approves Stage 02 → Release 30% Net (637.5K) to Stylist & Unlock Stage 03
+  ├── Client approves Stage 03 → Release 40% Net (850.0K) to Stylist & Unlock Custom Pose
+  └── Exception: If revisions exceed 2 without agreement → Freeze Escrow & Refund unapproved funds
+                  |
+                  v
+[STEP 5: FINAL AI POSE SHOOT & BANK PAYOUT]
+  ├── Client shoots final outfit using custom 33-node skeleton (Saved to Phone Gallery)
+  ├── Client submits a 1–5 star rating for the Stylist
+  └── Stylist wallet receives 100% of net earnings (2,125,000 VND) → 1-Tap Bank Withdrawal
+```
+
+
+
+
 
