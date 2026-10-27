@@ -1,12 +1,12 @@
 # ✨ PoseNova AI — AI Pose Atelier & Personal Styling C2C Marketplace
 
-![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white)
-![Node.js](https://img.shields.io/badge/Node.js-20.x-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=for-the-badge&logo=prisma&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
-![Google ML Kit](https://img.shields.io/badge/Google_ML_Kit-33_Pose_Nodes-EA4335?style=for-the-badge&logo=google&logoColor=white)
-![Gemini AI](https://img.shields.io/badge/Gemini_AI-Co--Pilot-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)
+![Flutter](https://img.shields.io/badge/Flutter-00C2FF?style=for-the-badge&logo=flutter&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-58CC02?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-4285FF?style=for-the-badge&logo=typescript&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-BB5CFF?style=for-the-badge&logo=prisma&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-00D68F?style=for-the-badge&logo=supabase&logoColor=white)
+![Google ML Kit](https://img.shields.io/badge/Google_ML_Kit-FF5C7A?style=for-the-badge&logo=google&logoColor=white)
+![Gemini AI](https://img.shields.io/badge/Gemini_AI-9B6DFF?style=for-the-badge&logo=googlegemini&logoColor=white)
 
 > **"From Styling to Posing — Bridging the gap between what you wear and how you own the frame."**  
 > **PoseNova AI** is a managed C2C Personal Styling Marketplace & AI Pose Atelier that connects fashion-forward **Clients** with independent **Personal Stylists** through **Real-Time 33-Landmark AI Pose Detection**, a **3-Stage Milestone Escrow System (`30% - 30% - 40%`)**, and **Visual Affiliate Commerce**.
@@ -50,17 +50,16 @@ Traditional C2C personal styling suffers from three critical bottlenecks: client
 The platform operates across **4 specialized workflows**, with **Workflow 3 serving as the Core Business & Transaction Engine**:
 
 ```text
-[Workflow 1: AI Pose Camera & Discovery] 
-       │  (Top-of-Funnel User Acquisition Hook)
-       ▼
-[Workflow 3: CORE FLOW — Styling Brief & 30-30-40 Escrow] ◄── [Workflow 2: Lookbook & Affiliate Tagging]
-       │                                                       (Supply-Side Creator Tooling)
-       ▼
+[Workflow 1: Discovery & AI Pose Camera]
+                    |
+                    v
+[Workflow 3: Styling Brief & 30-30-40 Escrow] <--- [Workflow 2: Lookbook & Affiliate Tagging]
+                    |
+                    v
 [Workflow 4: Revision Quota & Dispute Resolution]
-  (Financial Safety Net & Partial Refund Engine)
+```
 
-
-## 🏗️ Core Workflows & System Architecture
+### 🏗️ Core Workflows & System Architecture
 
 | Workflow | Name | Role in Ecosystem | Key Technical Components |
 |---|---|---|---|
@@ -102,8 +101,6 @@ The complete Happy Path journey connecting the Client (Alex Đỗ), the System &
   ├── Client submits a 1–5 star rating for the Stylist
   └── Stylist wallet receives 100% of net earnings (2,125,000 VND) → 1-Tap Bank Withdrawal
 ```
-
-
 
 ### 💰 4. Financial Mechanics: 30-30-40 Escrow & Dispute Engine
 
