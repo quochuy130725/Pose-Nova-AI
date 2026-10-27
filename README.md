@@ -58,3 +58,16 @@ The platform operates across **4 specialized workflows**, with **Workflow 3 serv
        ▼
 [Workflow 4: Revision Quota & Dispute Resolution]
   (Financial Safety Net & Partial Refund Engine)
+
+
+
+
+## 🏗️ Core Workflows & System Architecture
+
+| Workflow | Name | Role in Ecosystem | Key Technical Components |
+|---|---|---|---|
+| **Workflow 1** | Discovery & AI Pose Camera | **Top-of-Funnel Hook:** Users browse curated lookbooks (Streetwear, Cyber AW26, Y2K Pop), inspect affiliate items, and test poses in real time. | `google_mlkit_pose_detection`, 30 FPS RAM Stream, Cosine/Euclidean Joint Angle Matching, Local Gallery Save (`gal`). |
+| **Workflow 2** | Lookbook Publishing & Affiliate | **Supply-Side Engine:** Stylists upload outfit photos, validate human skeletal landmarks, and pin affiliate product links. | Automated OpenGraph Scraper (title, price, thumbnail), 33-Node JSONB Extractor, Normalized `(x, y)` Coordinates. |
+| **Workflow 3 ⭐** | **3-Stage Styling & Escrow** | **CORE BUSINESS FLOW:** End-to-end custom styling request, AI brief enhancement, 100% VietQR escrow deposit, and rolling 30-30-40 payouts. | Gemini AI Co-pilot, SePay VietQR Webhook, Prisma Interactive ACID Transactions, Pessimistic Wallet Locking. |
+| **Workflow 4** | Revision Quota & Dispute | **Risk Mitigation:** Enforces the 2-revision cap, freezes escrow funds upon conflict, and executes automated partial refunds. | Revision Counter State Machine, `ESCROW_FROZEN` Lock, 48-Hour SLA Auto-Release Cronjob. |
+
