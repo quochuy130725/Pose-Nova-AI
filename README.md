@@ -105,5 +105,231 @@ The complete Happy Path journey connecting the Client (Alex Đỗ), the System &
 
 
 
+### 💰 4. Financial Mechanics: 30-30-40 Escrow & Dispute Engine
+
+#### A. Milestone Disbursement Breakdown
+
+**Example contract:** 2,500,000 VND
+
+- **Platform Commission Fee:** 15% (375,000 VND total)
+- **Stylist Guaranteed Net Payout:** 85% (2,125,000 VND total)
+
+| Stage | Deliverable Scope | Allocation | Gross Amount | Platform Fee (15%) | Stylist Net Payout (85%) | Trigger Condition |
+|---|---|---:|---:|---:|---:|---|
+| Stage 01 | Moodboard & Concept (color palette, vibe, silhouette direction) | 30% | 750,000 VND | 112,500 VND | 637,500 VND | Instant payout upon Client approval |
+| Stage 02 | Outfit Selection & Affiliate Tags (garment curation and shoppable links) | 30% | 750,000 VND | 112,500 VND | 637,500 VND | Instant payout upon Client approval |
+| Stage 03 | Final Lookbook & 33 AI Pose Nodes (visual guide and custom skeleton) | 40% | 1,000,000 VND | 150,000 VND | 850,000 VND | Client approval or 48-hour SLA auto-release |
+| **Total** | **Full 3-Stage Contract (#REQ-8452)** | **100%** | **2,500,000 VND** | **375,000 VND** | **2,125,000 VND** | **100% Balanced Ledger** |
+
+#### B. Mathematical Invariant & Ledger Integrity
+
+Every financial operation executes inside an interactive PostgreSQL ACID transaction (`prisma.$transaction`), enforcing the following conservation invariant:
+
+```text
+Total Deposit
+= Total Net Payouts
++ Total Platform Fees
++ Escrow Locked Balance
++ Dispute Refunds
+```
+
+#### C. Revision Quota & Partial Dispute Refund Rule
+
+- **Revision Tracking:** Each stage allows at most 2 free revisions (`revision_count`: `0 → 1 → 2`).
+- **Dispute Activation:** When the revision quota is exhausted and the Client remains unsatisfied, the dispute and refund action becomes available.
+- **Stylist Protection:** The Stylist retains the 637,500 VND net payout already earned from an approved Stage 01.
+- **Client Protection:** If a dispute occurs at Stage 02, the unapproved Stage 02 (30%) and Stage 03 (40%) funds, totaling 1,750,000 VND, are frozen and refunded to the Client.
+- **Escrow State:** Disputed funds transition to `ESCROW_FROZEN` until the refund process is resolved.
+### 📸 5. On-Device AI Camera & Privacy Architecture
+
+PoseNova AI is designed around a Privacy-First, Edge-Computing Vision Pipeline.
+
+| Component | Implementation | Privacy Guarantee |
+|---|---|---|
+| Real-Time Pose Detection | `google_mlkit_pose_detection`, 30 FPS | Camera frames are processed in volatile device RAM during live pose matching; raw preview frames are not written to disk or uploaded to external servers. |
+| Local Photo Storage | `gal` package | Captured high-resolution photos are saved directly to the smartphone's native photo album (`DCIM/PoseNova`). |
+| Cloud Upload | Strict opt-in | Personal photos remain on-device unless the Client explicitly attaches a photo to a review or opts in to sharing on the community feed. |
+### 🗄️ 6. Database Schema & Entity Relationships
+
+The PostgreSQL database is structured around the following core entities, managed through Prisma ORM.
+
+```text
+[users] 1 ────────── 1 [wallets]
+   |
+   ├── 1 ────────── * [lookbooks]
+   |                      └── 1 ──── * [product_tags]
+   |
+   └── 1 ────────── * [styling_requests]
+                           ├── 1 ──── 3 [request_milestones]
+                           ├── 1 ──── * [payment_transactions]
+                           └── 1 ──── 1 [disputes]
+```
+
+| Table | Primary Key | Key Columns | Business Responsibility |
+|---|---|---|---|
+| `users` | `id` (UUID) | `email`, `full_name`, `role`, `height_cm`, `weight_kg`, `rating_avg` | Stores Client and Stylist profiles and body metrics. |
+| `wallets` | `id` (UUID) | `user_id`, `available_balance`, `escrow_locked_balance`, `bank_name`, `bank_account_no` | Tracks withdrawable earnings and funds locked in active milestones. |
+| `lookbooks` | `id` (UUID) | `stylist_id`, `title`, `style_category`, `image_url`, `pose_landmarks_json` | Stores editorial outfits and 33-node skeletal coordinates. |
+| `product_tags` | `id` (UUID) | `lookbook_id`, `milestone_id`, `product_name`, `price`, `affiliate_url`, `pos_x`, `pos_y` | Stores interactive affiliate pins on lookbook and milestone images. |
+| `styling_requests` | `id` (UUID) | `code`, `client_id`, `stylist_id`, `brief_text`, `ai_palette_json`, `total_budget`, `status` | Stores custom styling contracts. |
+| `request_milestones` | `id` (UUID) | `request_id`, `stage_order`, `percentage`, `gross_amount`, `net_payout`, `revision_count`, `status` | Controls stage deliverables, revision limits, and 48-hour SLA timers. |
+| `payment_transactions` | `id` (UUID) | `request_id`, `milestone_id`, `wallet_id`, `type`, `gross_amount`, `fee_amount`, `net_amount`, `sepay_ref_code` | Maintains the immutable escrow audit ledger. |
+| `disputes` | `id` (UUID) | `request_id`, `milestone_id`, `reason`, `remaining_refund_amount`, `status` | Manages disputes and partial refunds for unapproved stages. |
+### 🔌 7. RESTful API Specification
+
+#### A. Auth & Discovery Module — Workflows 1 & 2
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `POST` | `/api/v1/auth/demo-login` | Instant one-tap persona login (Client / Stylist). | Public |
+| `GET` | `/api/v1/lookbooks` | Fetch lookbooks with 33 pose landmarks and affiliate tags. | Public |
+| `POST` | `/api/v1/lookbooks/scrape-affiliate` | Scrape OpenGraph metadata from product URLs. | Stylist |
+| `POST` | `/api/v1/lookbooks` | Publish a lookbook with verified skeletal data and product tags. | Stylist |
+
+#### B. Styling Request & SePay Escrow Module — Workflow 3
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `POST` | `/api/v1/styling-requests/ai-enhance` | Refine the styling brief and generate a four-color palette using Gemini AI. | Client |
+| `POST` | `/api/v1/styling-requests` | Create a styling order and generate a SePay VietQR payment payload. | Client |
+| `POST` | `/api/v1/webhooks/sepay` | Receive idempotent VietQR payment confirmations, lock escrow funds, and initialize three stages. | Webhook Secret |
+
+#### C. Milestone Execution, Wallet & Dispute Module — Workflows 3 & 4
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `POST` | `/api/v1/milestones/:id/submit` | Submit stage deliverables, pose nodes, and affiliate tags; start the SLA timer. | Stylist |
+| `POST` | `/api/v1/milestones/:id/approve` | Approve a stage, transfer the stylist's net payout, and unlock the next stage. | Client |
+| `POST` | `/api/v1/milestones/:id/request-revision` | Request revisions while enforcing the two-revision limit. | Client |
+| `POST` | `/api/v1/disputes` | Freeze escrow and refund unapproved stage funds. | Client |
+| `GET` | `/api/v1/wallets/me` | Retrieve wallet balances and the immutable escrow ledger. | Stylist |
+| `POST` | `/api/v1/wallets/withdraw` | Withdraw available net earnings to the linked bank account. | Stylist |
+### 🔌 7. RESTful API Specification
+
+#### A. Auth & Discovery Module — Workflows 1 & 2
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `POST` | `/api/v1/auth/demo-login` | Instant one-tap persona login (Client / Stylist). | Public |
+| `GET` | `/api/v1/lookbooks` | Fetch lookbooks with 33 pose landmarks and affiliate tags. | Public |
+| `POST` | `/api/v1/lookbooks/scrape-affiliate` | Scrape OpenGraph metadata from product URLs. | Stylist |
+| `POST` | `/api/v1/lookbooks` | Publish a lookbook with verified skeletal data and product tags. | Stylist |
+
+#### B. Styling Request & SePay Escrow Module — Workflow 3
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `POST` | `/api/v1/styling-requests/ai-enhance` | Refine the styling brief and generate a four-color palette using Gemini AI. | Client |
+| `POST` | `/api/v1/styling-requests` | Create a styling order and generate a SePay VietQR payment payload. | Client |
+| `POST` | `/api/v1/webhooks/sepay` | Receive idempotent VietQR payment confirmations, lock escrow funds, and initialize three stages. | Webhook Secret |
+
+#### C. Milestone Execution, Wallet & Dispute Module — Workflows 3 & 4
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `POST` | `/api/v1/milestones/:id/submit` | Submit stage deliverables, pose nodes, and affiliate tags; start the SLA timer. | Stylist |
+| `POST` | `/api/v1/milestones/:id/approve` | Approve a stage, transfer the stylist's net payout, and unlock the next stage. | Client |
+| `POST` | `/api/v1/milestones/:id/request-revision` | Request revisions while enforcing the two-revision limit. | Client |
+| `POST` | `/api/v1/disputes` | Freeze escrow and refund unapproved stage funds. | Client |
+| `GET` | `/api/v1/wallets/me` | Retrieve wallet balances and the immutable escrow ledger. | Stylist |
+| `POST` | `/api/v1/wallets/withdraw` | Withdraw available net earnings to the linked bank account. | Stylist |
+### 📂 8. Project Directory Structure
+
+```text
+posenova-platform/
+├── posenova-mobile/                    # Flutter mobile app (iOS / Android)
+│   └── lib/
+│       ├── core/
+│       │   ├── theme/                  # Design system and color palette
+│       │   └── widgets/                # Reusable UI components
+│       └── features/
+│           ├── auth/                   # Client / Stylist role switcher
+│           ├── discovery/              # Lookbook feed and affiliate sheet
+│           ├── pose_camera/            # ML Kit pose detection and local save
+│           ├── styling_request/        # Brief builder, Gemini AI and VietQR
+│           └── stylist_studio/         # Order inbox, milestones and wallet
+│
+└── posenova-backend/                   # Node.js + TypeScript + Prisma
+    ├── prisma/
+    │   ├── schema.prisma               # PostgreSQL schema
+    │   └── seed.ts                     # Demo data
+    ├── docs/                           # Swagger OpenAPI and workflow diagrams
+    └── src/
+        ├── config/
+        ├── common/
+        │   ├── constants/
+        │   ├── middlewares/
+        │   └── utils/
+        ├── integrations/
+        │   ├── sepay/                  # VietQR and webhook handler
+        │   ├── gemini/                 # AI brief and color palette
+        │   └── scraper/                # Affiliate metadata extractor
+        ├── jobs/
+        │   └── sla-auto-release.job.ts # 48-hour auto-release job
+        └── modules/
+            ├── auth/
+            ├── lookbooks/
+            ├── styling-requests/
+            ├── milestones/
+            ├── escrow-wallet/
+            └── disputes/
+```
+### 🚀 9. Getting Started & Installation
+
+#### Prerequisites
+
+- Node.js >= 20.x
+- PostgreSQL >= 15
+- Flutter SDK >= 3.19.x (Dart >= 3.3.x)
+- Physical Android/iOS device recommended for real-time AI pose camera testing
+
+#### Step 1: Back-End Setup
+
+```bash
+cd posenova-backend
+npm install
+
+# Configure DATABASE_URL, GEMINI_API_KEY, and SEPAY_WEBHOOK_SECRET
+cp .env.example .env
+
+# Run Prisma migrations and seed demo personas
+npx prisma migrate dev --name init_posenova_schema
+npx prisma db seed
+
+# Start the development server
+npm run dev
+```
+
+- API: `http://localhost:3000`
+- Swagger Docs: `http://localhost:3000/api-docs`
+
+#### Step 2: Flutter Mobile App Setup
+
+```bash
+cd posenova-mobile
+flutter pub get
+
+# Run on a connected device or emulator
+flutter run
+```
+### 🎬 10. 5-Minute Evaluation & Demo Script
+
+Designed for live demonstration during a capstone defense or product pitch.
+
+| Time | Demo Stage | Actions | Expected Outcome |
+|---|---|---|---|
+| Minute 1 | Discovery & AI Pose Camera | Browse the lookbook feed, launch the 30 FPS pose camera, align with the 33-landmark skeleton, capture a photo, and verify local storage. | Demonstrate pose matching and on-device photo saving. |
+| Minute 2 | Styling Brief & Escrow Deposit | Enter body metrics and budget, generate the brief and color palette using Gemini AI, and pay 2,500,000 VND through SePay VietQR. | Demonstrate styling brief enhancement and escrow locking. |
+| Minute 3 | Stylist Studio | Switch to the Stylist persona and inspect request `#REQ-8452` and the 2,125,000 VND net payout breakdown. | Demonstrate the stylist order inbox and payout calculation. |
+| Minute 4 | Milestone Workspace | Inspect Stage 01 and submit the Stage 02 outfit selection with affiliate product tags. | Demonstrate milestone delivery and affiliate tagging. |
+| Minute 5 | Escrow Ledger & Bank Payout | Inspect wallet balances and the escrow reconciliation ledger, then demonstrate the withdrawal flow. | Demonstrate financial tracking and bank withdrawal readiness. |
+
+---
+
+### 📄 License
+
+This project is developed for academic capstone evaluation and R&D demonstration.
+
+**All rights reserved © 2026 PoseNova AI Team.**
 
 
