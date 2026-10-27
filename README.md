@@ -47,71 +47,35 @@ Traditional C2C personal styling suffers from three critical bottlenecks: client
 
 ## 🔄 2. System Workflows Architecture
 
-The platform operates across **4 specialized workflows**, with **Workflow 3 serving as the Core Business & Transaction Engine**:
+[STEP 1: DISCOVERY & AI POSE TRIAL]
+  └── Client browses Staggered Lookbooks & tests 33-Landmark AI Pose Camera (30 FPS)
+                  │
+                  ▼
+[STEP 2: STYLING BRIEF & 100% ESCROW DEPOSIT]
+  ├── Client inputs body metrics (175cm, 65kg), occasion & budget (2,500,000 VND)
+  ├── Gemini AI Co-pilot refines brief & generates 4-color hex palette
+  └── Client scans SePay VietQR ──► System locks 100% fund in Escrow (ESCROW_LOCKED)
+                  │
+                  ▼
+[STEP 3: STYLIST 3-STAGE MILESTONE EXECUTION]
+  ├── Stage 01 (30%): Deliver Moodboard, Vibe & Color Concept
+  ├── Stage 02 (30%): Deliver Outfit Curation + Pin Affiliate Product Tags
+  └── Stage 03 (40%): Deliver Final Lookbook + Extract 33 AI Pose Landmarks
+                  │
+                  ▼
+[STEP 4: ROLLING APPROVAL & AUTOMATED ESCROW DISBURSEMENT]
+  ├── Client approves Stage 01 ──► Release 30% Net (637.5K) to Stylist & Unlock Stage 02
+  ├── Client approves Stage 02 ──► Release 30% Net (637.5K) to Stylist & Unlock Stage 03
+  ├── Client approves Stage 03 ──► Release 40% Net (850.0K) to Stylist & Unlock Custom Pose
+  └── (Exception: If Revision > 2 without agreement ──► Freeze Escrow & Refund unapproved %)
+                  │
+                  ▼
+[STEP 5: FINAL AI POSE SHOOT & BANK PAYOUT]
+  ├── Client shoots final outfit using custom 33-node skeleton (Saved to Phone Gallery)
+  ├── Client submits 1-5 Star rating for Stylist
+  └── Stylist wallet reaches 100% Net (2,125,000 VND) ──► 1-Tap Withdrawal to Bank Account
 
-```text
-[Workflow 1: AI Pose Camera & Discovery] 
-       │  (Top-of-Funnel User Acquisition Hook)
-       ▼
-[Workflow 3: CORE FLOW — Styling Brief & 30-30-40 Escrow] ◄── [Workflow 2: Lookbook & Affiliate Tagging]
-       │                                                       (Supply-Side Creator Tooling)
-       ▼
-[Workflow 4: Revision Quota & Dispute Resolution]
-  (Financial Safety Net & Partial Refund Engine)
-WorkflowNameRole in EcosystemKey Technical ComponentsWorkflow 1Discovery & AI Pose CameraTop-of-Funnel Hook: Users browse curated lookbooks (Streetwear, Cyber AW26, Y2K Pop), inspect affiliate items, and test poses in real time.google_mlkit_pose_detection, 30 FPS RAM Stream, Cosine/Euclidean Joint Angle Matching, Local Gallery Save (gal).Workflow 2Lookbook Publishing & AffiliateSupply-Side Engine: Stylists upload outfit photos, validate human skeletal landmarks, and pin affiliate product links.Automated OpenGraph Scraper (title, price, thumbnail), 33-Node JSONB Extractor, normalized (x, y) coordinates.Workflow 3 ⭐3-Stage Styling & EscrowCORE BUSINESS FLOW: End-to-end custom styling request, AI brief enhancement, 100% VietQR escrow deposit, and rolling 30-30-40 payouts.Gemini AI Co-pilot, SePay VietQR Webhook, Prisma Interactive ACID Transactions, Pessimistic Wallet Locking.Workflow 4Revision Quota & DisputeRisk Mitigation: Enforces the 2-revision cap, freezes escrow funds upon conflict, and executes automated partial refunds.Revision Counter State Machine, ESCROW_FROZEN Lock, 48-Hour SLA Auto-Release Cronjob.🛣️ 3. End-to-End Main FlowThe complete Happy Path journey connecting the Client (Alex Đỗ), the System & AI Engine, and the Stylist (Maya Trần):Đoạn mãflowchart TD
-    classDef process fill:#dae8fc,stroke:#6c8ebf,stroke-width:1.5px,color:#000000;
-    classDef decision fill:#ffe6cc,stroke:#d79b00,stroke-width:1.5px,color:#000000;
-    classDef startEnd fill:#f8cecc,stroke:#b85450,stroke-width:2px,color:#000000;
-
-    subgraph Client["App: User / Client"]
-        direction TB
-        C_start(["Start"])
-        C_disc["1. Explore Lookbooks & Test AI Pose Camera"]
-        C_brief["2. Fill Styling Brief (Metrics, Occasion, Budget)"]
-        C_sub["Submit Styling Request"]
-        C_dep["Scan VietQR & Deposit 100% (SePay Escrow)"]
-        C_app1["Approve Stage 1 (30%)"]
-        C_app2["Approve Stage 2 (30%)"]
-        C_app3["Approve Stage 3 (40%)"]
-        C_shoot["Shoot Final Look via AI Pose Camera (Save to Gallery)"]
-        C_rate["Rate Stylist (1-5 Stars) & Close Order"]
-        C_end(["End"])
-    end
-
-    subgraph System["System & AI Engine"]
-        direction TB
-        Sys_ai["Gemini AI Analyzes Brief & Recommends Stylists"]
-        Sys_not["Dispatch Request Notification"]
-        Sys_init["Init 3-Stage Escrow (30-30-40) & Generate VietQR"]
-        Sys_lock["Lock 100% Escrow Fund & Unlock Stage 1"]
-        Sys_p1["Release 30% Net to Wallet & Unlock Stage 2"]
-        Sys_p2["Release 30% Net to Wallet & Unlock Stage 3"]
-        Sys_p3["Release Final 40% Net & Publish Custom Pose"]
-    end
-
-    subgraph Stylist["Role: Stylist / Partner"]
-        direction TB
-        S_rec["Receive Notification & Review AI Brief"]
-        S_acc{"Accept Request?"}
-        S_st1["Stage 1: Deliver Moodboard & Concept (30%)"]
-        S_st2["Stage 2: Deliver Outfits & Affiliate Tags (30%)"]
-        S_st3["Stage 3: Deliver Final Lookbook & 33 Pose Nodes (40%)"]
-        S_with["Wallet Reaches 100% Net -> Withdraw to Bank"]
-    end
-
-    C_start --> C_disc --> C_brief --> C_sub
-    C_sub --> Sys_ai --> Sys_not --> S_rec --> S_acc
-    S_acc -- No --> Sys_ai
-    S_acc -- Yes --> Sys_init --> C_dep --> Sys_lock
-    Sys_lock --> S_st1 --> C_app1 --> Sys_p1
-    Sys_p1 --> S_st2 --> C_app2 --> Sys_p2
-    Sys_p2 --> S_st3 --> C_app3 --> Sys_p3
-    Sys_p3 --> C_shoot --> C_rate --> C_end
-    Sys_p3 --> S_with
-
-    class C_disc,C_brief,C_sub,C_dep,C_app1,C_app2,C_app3,C_shoot,C_rate,Sys_ai,Sys_not,Sys_init,Sys_lock,Sys_p1,Sys_p2,Sys_p3,S_rec,S_st1,S_st2,S_st3,S_with process;
-    class S_acc decision;
-    class C_start,C_end startEnd;
+  
 💰 4. Financial Mechanics: 30-30-40 Escrow & Dispute EngineA. Milestone Disbursement Breakdown (Example Contract: 2,500,000 VND)Platform Commission Fee: 15% (375,000 VND total across 3 stages)Stylist Guaranteed Net Payout: 85% (2,125,000 VND total across 3 stages)StageDeliverable ScopeAllocationGross AmountPlatform Fee (15%)Stylist Net Payout (85%)Trigger ConditionStage 01Moodboard & Concept (Color palette, vibe, silhouette direction)30%750,000 VND112,500 VND637,500 VNDInstant payout upon Client approval of Stage 01.Stage 02Outfit Selection & Affiliate Tags (Garment curation & shoppable links)30%750,000 VND112,500 VND637,500 VNDInstant payout upon Client approval of Stage 02.Stage 03Final Lookbook & 33 AI Pose Nodes (Full visual guide & custom skeleton)40%1,000,000 VND150,000 VND850,000 VNDClient approval OR 48-hour SLA Auto-Release timer.TotalFull 3-Stage Contract (#REQ-8452)100%2,500,000 VND375,000 VND2,125,000 VND100% Balanced LedgerB. Mathematical Invariant & Ledger IntegrityEvery financial operation executes inside an interactive PostgreSQL ACID transaction (prisma.$transaction), satisfying the strict conservation invariant:$$\text{Total Deposit} = \sum_{i=1}^{k} \text{Net Payout}_i + \sum_{i=1}^{k} \text{Platform Fee}_i + \text{Escrow Locked Balance} + \text{Dispute Refund}$$C. Revision Quota (Max = 2) & Partial Dispute Refund RuleRevision Tracking: For each stage, the Client is entitled to at most 2 free revisions (revision_count increments from 0 → 1 → 2).Dispute Activation: Once revision_count == 2 is exhausted and the Client remains unsatisfied, the Open Dispute & Refund action unlocks.Partial Refund Calculation: Suppose Stage 01 (30%) was already approved, and a dispute occurs at Stage 02:Stylist Protection: The Stylist retains the 637,500 VND Net Payout already earned from Stage 01.Client Protection: The unapproved remaining stages (Stage 02 [30%] + Stage 03 [40%] = 70%) totaling 1,750,000 VND are frozen (ESCROW_FROZEN) and refunded directly to the Client.📸 5. On-Device AI Camera & Privacy ArchitecturePoseNova AI is engineered with a Privacy-First, Edge-Computing Vision Pipeline:Zero-Latency RAM Stream (30 FPS): During live pose matching, camera frames are processed strictly in volatile device RAM via google_mlkit_pose_detection. No video streams or raw preview frames are ever written to disk or uploaded to external servers.Direct Local Gallery Save: When the user hits the capture button at high pose-match accuracy (e.g., 98% Pose Match), the high-resolution photo is saved directly to the smartphone's native photo album (DCIM/PoseNova) via the gal package.Strict Opt-In Cloud Upload: Personal photos taken by clients never leave the device unless the user explicitly attaches a photo to a 5-star review or opts in to share their result on the community feed.🗄️ 6. Database Schema & Entity Relationships (ERD)The PostgreSQL database is structured around 7 core tables managed via Prisma ORM:Đoạn mãerDiagram
     USERS ||--o| WALLETS : owns
     USERS ||--o{ LOOKBOOKS : publishes
@@ -237,6 +201,8 @@ WorkflowNameRole in EcosystemKey Technical ComponentsWorkflow 1Discovery & AI Po
             ├── milestones/
             ├── escrow-wallet/
             └── disputes/
+
+            
 🚀 9. Getting Started & InstallationPrerequisitesNode.js >= 20.x & PostgreSQL >= 15Flutter SDK >= 3.19.x (Dart >= 3.3.x)Physical Android/iOS device (recommended for testing real-time 30 FPS AI Pose Camera)Step 1: Back-End SetupBashcd posenova-backend
 npm install
 
