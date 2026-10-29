@@ -1,0 +1,275 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  CLIENT
+  STYLIST
+  ADMIN
+}
+
+enum RequestStatus {
+  PENDING_ACCEPTANCE
+  PENDING_DEPOSIT
+  IN_PROGRESS
+  ESCROW_FROZEN
+  COMPLETED
+}
+
+enum MilestoneStatus {
+  LOCKED
+  ACTIVE
+  IN_REVIEW
+  REVISION_REQUESTED
+  APPROVED
+  DISPUTED
+}
+
+enum TransactionType {
+  ESCROW_DEPOSIT
+  MILESTONE_RELEASE
+  REFUND
+  WITHDRAWAL
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum DisputeStatus {
+  OPEN
+  REFUNDED
+  RESOLVED
+}
+
+model User {
+  id              String           @id @default(uuid())
+  email           String           @unique
+  passwordHash    String?          @map("password_hash")
+  fullName        String           @map("full_name")
+  bio             String?
+  avatarUrl       String?          @map("avatar_url")
+  role            Role             @default(CLIENT)
+  heightCm        Int?             @map("height_cm")
+  weightKg        Int?             @map("weight_kg")
+  ratingAvg       Float            @default(5.0) @map("rating_avg")
+  totalReviews    Int              @default(0) @map("total_reviews")
+  verifiedBadge   Boolean          @default(false) @map("verified_badge")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  wallet          Wallet?
+  lookbooks       Lookbook[]
+  lookbookLikes   LookbookLike[]
+  clientRequests  StylingRequest[] @relation("ClientRequests")
+  stylistRequests StylingRequest[] @relation("StylistRequests")
+  clientReviews   Review[]         @relation("ClientReviews")
+  stylistReviews  Review[]         @relation("StylistReviews")
+
+  @@map("users")
+}
+
+model Wallet {
+  id                  String               @id @default(uuid())
+  userId              String               @unique @map("user_id")
+  availableBalance    Decimal              @default(0) @map("available_balance") @db.Decimal(14, 2)
+  escrowLockedBalance Decimal              @default(0) @map("escrow_locked_balance") @db.Decimal(14, 2)
+  totalWithdrawn      Decimal              @default(0) @map("total_withdrawn") @db.Decimal(14, 2)
+  bankName            String?              @map("bank_name")
+  bankAccountNo       String?              @map("bank_account_no")
+  bankAccountHolder   String?              @map("bank_account_holder")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions        PaymentTransaction[]
+
+  @@map("wallets")
+}
+
+model Lookbook {
+  id                String         @id @default(uuid())
+  stylistId         String         @map("stylist_id")
+  title             String
+  description       String?
+  styleCategory     String         @default("STREETWEAR") @map("style_category")
+  imageUrl          String         @map("image_url")
+  poseLandmarksJson Json           @map("pose_landmarks_json")
+  likesCount        Int            @default(0) @map("likes_count")
+  poseTryCount      Int            @default(0) @map("pose_try_count")
+  createdAt         DateTime       @default(now()) @map("created_at")
+
+  stylist           User           @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+  productTags       ProductTag[]
+  likes             LookbookLike[]
+
+  @@map("lookbooks")
+}
+
+model LookbookLike {
+  id         String   @id @default(uuid())
+  lookbookId String   @map("lookbook_id")
+  userId     String   @map("user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  lookbook   Lookbook @relation(fields: [lookbookId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([lookbookId, userId])
+  @@map("lookbook_likes")
+}
+
+model ProductTag {
+  id           String            @id @default(uuid())
+  lookbookId   String?           @map("lookbook_id")
+  milestoneId  String?           @map("milestone_id")
+  productName  String            @map("product_name")
+  brandName    String?           @map("brand_name")
+  price        Decimal           @db.Decimal(14, 2)
+  thumbnailUrl String?           @map("thumbnail_url")
+  affiliateUrl String            @map("affiliate_url")
+  posX         Float             @map("pos_x")
+  posY         Float             @map("pos_y")
+  clickCount   Int               @default(0) @map("click_count")
+
+  lookbook     Lookbook?         @relation(fields: [lookbookId], references: [id], onDelete: Cascade)
+  milestone    RequestMilestone? @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  @@map("product_tags")
+}
+
+model StylingRequest {
+  id              String               @id @default(uuid())
+  code            String               @unique
+  clientId        String               @map("client_id")
+  stylistId       String               @map("stylist_id")
+  title           String?
+  briefText       String               @map("brief_text")
+  occasion        String?
+  vibe            String?
+  bodyType        String?              @map("body_type")
+  aiPaletteJson   Json?                @map("ai_palette_json")
+  totalBudget     Decimal              @map("total_budget") @db.Decimal(14, 2)
+  platformFeeRate Decimal              @default(0.15) @map("platform_fee_rate") @db.Decimal(4, 2)
+  status          RequestStatus        @default(PENDING_DEPOSIT)
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+
+  client          User                 @relation("ClientRequests", fields: [clientId], references: [id])
+  stylist         User                 @relation("StylistRequests", fields: [stylistId], references: [id])
+  milestones      RequestMilestone[]
+  transactions    PaymentTransaction[]
+  dispute         Dispute?
+  review          Review?
+
+  @@map("styling_requests")
+}
+
+model RequestMilestone {
+  id                String                @id @default(uuid())
+  requestId         String                @map("request_id")
+  stageOrder        Int                   @map("stage_order")
+  title             String
+  description       String?
+  percentage        Int
+  grossAmount       Decimal               @map("gross_amount") @db.Decimal(14, 2)
+  netPayout         Decimal               @map("net_payout") @db.Decimal(14, 2)
+  revisionCount     Int                   @default(0) @map("revision_count")
+  maxRevisions      Int                   @default(2) @map("max_revisions")
+  stylistNotes      String?               @map("stylist_notes")
+  clientFeedback    String?               @map("client_feedback")
+  deliverableTitle  String?               @map("deliverable_title")
+  deliverableUrl    String?               @map("deliverable_url")
+  poseLandmarksJson Json?                 @map("pose_landmarks_json")
+  status            MilestoneStatus       @default(LOCKED)
+  autoReleaseAt     DateTime?             @map("auto_release_at")
+  submittedAt       DateTime?             @map("submitted_at")
+  approvedAt        DateTime?             @map("approved_at")
+
+  request           StylingRequest        @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  submissions       MilestoneSubmission[]
+  productTags       ProductTag[]
+  transactions      PaymentTransaction[]
+  disputes          Dispute[]
+
+  @@unique([requestId, stageOrder])
+  @@map("request_milestones")
+}
+
+model MilestoneSubmission {
+  id                String           @id @default(uuid())
+  milestoneId       String           @map("milestone_id")
+  revisionNumber    Int              @default(0) @map("revision_number")
+  deliverableUrl    String           @map("deliverable_url")
+  stylistNotes      String?          @map("stylist_notes")
+  clientFeedback    String?          @map("client_feedback")
+  poseLandmarksJson Json?            @map("pose_landmarks_json")
+  submittedAt       DateTime         @default(now()) @map("submitted_at")
+
+  milestone         RequestMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  @@map("milestone_submissions")
+}
+
+model PaymentTransaction {
+  id           String            @id @default(uuid())
+  requestId    String            @map("request_id")
+  milestoneId  String?           @map("milestone_id")
+  walletId     String            @map("wallet_id")
+  type         TransactionType
+  grossAmount  Decimal           @map("gross_amount") @db.Decimal(14, 2)
+  feeAmount    Decimal           @default(0) @map("fee_amount") @db.Decimal(14, 2)
+  netAmount    Decimal           @map("net_amount") @db.Decimal(14, 2)
+  sepayRefCode String?           @unique @map("sepay_ref_code")
+  description  String?
+  status       TransactionStatus @default(COMPLETED)
+  createdAt    DateTime          @default(now()) @map("created_at")
+
+  request      StylingRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  milestone    RequestMilestone? @relation(fields: [milestoneId], references: [id])
+  wallet       Wallet            @relation(fields: [walletId], references: [id])
+
+  @@unique([milestoneId, type])
+  @@map("payment_transactions")
+}
+
+model Dispute {
+  id                    String           @id @default(uuid())
+  requestId             String           @unique @map("request_id")
+  milestoneId           String           @map("milestone_id")
+  reason                String
+  remainingRefundAmount Decimal          @map("remaining_refund_amount") @db.Decimal(14, 2)
+  status                DisputeStatus    @default(OPEN)
+  createdAt             DateTime         @default(now()) @map("created_at")
+  resolvedAt            DateTime?        @map("resolved_at")
+
+  request               StylingRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  milestone             RequestMilestone @relation(fields: [milestoneId], references: [id])
+
+  @@map("disputes")
+}
+
+model Review {
+  id               String         @id @default(uuid())
+  requestId        String         @unique @map("request_id")
+  clientId         String         @map("client_id")
+  stylistId        String         @map("stylist_id")
+  rating           Int
+  comment          String?
+  capturedImageUrl String?        @map("captured_image_url")
+  poseMatchScore   Float?         @map("pose_match_score")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  request          StylingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  client           User           @relation("ClientReviews", fields: [clientId], references: [id])
+  stylist          User           @relation("StylistReviews", fields: [stylistId], references: [id])
+
+  @@map("reviews")
+}

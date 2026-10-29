@@ -1,0 +1,861 @@
+openapi: 3.0.0
+info:
+  title: PoseNova AI API
+  version: 1.0.0
+  description: >-
+    Managed C2C Personal Styling Marketplace, AI 33-Landmark Pose Atelier &
+    30-30-40 Milestone Escrow API. Use the Authorize button with the JWT token
+    returned from /api/v1/auth/demo-login or /api/v1/auth/login.
+servers:
+  - url: http://localhost:3000
+    description: Local Development Server
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    PoseLandmarkNode:
+      type: object
+      required: [x, y, z]
+      properties:
+        landmarkIndex:
+          type: integer
+          minimum: 0
+          maximum: 32
+          example: 0
+        x:
+          type: number
+          description: Normalized X coordinate (0.0 - 1.0)
+          example: 0.512
+        y:
+          type: number
+          description: Normalized Y coordinate (0.0 - 1.0)
+          example: 0.184
+        z:
+          type: number
+          description: Relative depth coordinate from Google ML Kit
+          example: -0.042
+        visibility:
+          type: number
+          minimum: 0
+          maximum: 1
+          example: 0.99
+    ProductTagInput:
+      type: object
+      required: [productName, price, affiliateUrl, posX, posY]
+      properties:
+        productName:
+          type: string
+          example: Áo Khoác Blazer Oversized Wool Blend
+        brandName:
+          type: string
+          example: Zara
+        price:
+          type: number
+          example: 1899000
+        thumbnailUrl:
+          type: string
+          example: https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=600&q=80
+        affiliateUrl:
+          type: string
+          example: https://www.zara.com/vn/en/oversized-wool-blazer-p02753102.html
+        posX:
+          type: number
+          minimum: 0
+          maximum: 1
+          example: 0.48
+        posY:
+          type: number
+          minimum: 0
+          maximum: 1
+          example: 0.36
+paths:
+  /api/v1/health:
+    get:
+      tags: [System]
+      summary: Health check and Supabase PostgreSQL connectivity
+      responses:
+        '200':
+          description: Server and database connection healthy
+
+  /api/v1/auth/demo-login:
+    post:
+      tags: [Auth]
+      summary: 1-Tap Persona Switcher (Alex Đỗ CLIENT <-> Maya Trần STYLIST)
+      description: Instant demo authentication returning a real signed JWT token and live Supabase Wallet balances.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role:
+                  type: string
+                  enum: [CLIENT, STYLIST]
+                  default: CLIENT
+            examples:
+              SwitchToClientAlexDo:
+                summary: Login as Client (Alex Đỗ)
+                value:
+                  role: CLIENT
+              SwitchToStylistMayaTran:
+                summary: Login as Stylist (Maya Trần)
+                value:
+                  role: STYLIST
+      responses:
+        '200':
+          description: Signed JWT token and user + wallet profile
+
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user account and initialize Wallet (0 VND)
+      description: Hashes password with bcrypt and atomically creates both User and Wallet inside a Prisma transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, fullName]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: minh.khoi@posenova.com
+                password:
+                  type: string
+                  minLength: 6
+                  example: PoseNova@2026
+                fullName:
+                  type: string
+                  minLength: 2
+                  example: Minh Khôi
+                role:
+                  type: string
+                  enum: [CLIENT, STYLIST]
+                  default: CLIENT
+                  example: CLIENT
+                heightCm:
+                  type: integer
+                  minimum: 1
+                  maximum: 250
+                  example: 175
+                weightKg:
+                  type: integer
+                  minimum: 1
+                  maximum: 300
+                  example: 68
+                avatarUrl:
+                  type: string
+                  format: uri
+                  example: https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400
+                bio:
+                  type: string
+                  maxLength: 500
+                  example: Yêu thích phong cách Minimalist & Smart Casual
+      responses:
+        '201':
+          description: Registered new account with initialized Wallet and signed JWT
+        '409':
+          description: Email already registered
+        '422':
+          description: Validation failed
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Standard email and password login
+      description: Seeded demo accounts use password `PoseNova@2026` (`alex.do@gmail.com` or `maya.tran@posenova.com`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: alex.do@gmail.com
+                password:
+                  type: string
+                  example: PoseNova@2026
+            examples:
+              ClientAlexDo:
+                summary: Alex Đỗ (Client)
+                value:
+                  email: alex.do@gmail.com
+                  password: PoseNova@2026
+              StylistMayaTran:
+                summary: Maya Trần (Stylist)
+                value:
+                  email: maya.tran@posenova.com
+                  password: PoseNova@2026
+      responses:
+        '200':
+          description: Authenticated successfully with JWT token and wallet balances
+        '401':
+          description: Invalid email or password
+
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      summary: Get current authenticated user profile and live wallet balances
+      responses:
+        '200':
+          description: Current user profile + wallet
+        '401':
+          description: Missing or invalid JWT Bearer token
+
+  /api/v1/lookbooks:
+    get:
+      tags: [Lookbooks]
+      summary: List lookbooks with 33 XYZ pose landmarks, affiliate product tags, and isLiked status
+      parameters:
+        - in: query
+          name: styleCategory
+          required: false
+          description: Filter by style category (e.g. STREETWEAR, MINIMALIST, CYBER_AW26, OLD_MONEY). Omit or pass ALL for full feed.
+          schema:
+            type: string
+            example: CYBER_AW26
+      responses:
+        '200':
+          description: Array of lookbooks with 33 pose landmarks and product tags
+    post:
+      tags: [Lookbooks]
+      security:
+        - bearerAuth: []
+      summary: Publish a new lookbook (Requires STYLIST role & exact 33 human pose landmarks)
+      description: Rejects photos without a full human pose (`poseLandmarksJson.length !== 33` -> HTTP 400).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, imageUrl, poseLandmarksJson]
+              properties:
+                title:
+                  type: string
+                  example: Minimalist Monochrome Tailoring AW26
+                description:
+                  type: string
+                  example: Phối blazer dáng rộng cùng quần ống suông tạo tỷ lệ chân dài khi chụp góc thấp.
+                styleCategory:
+                  type: string
+                  default: STREETWEAR
+                  example: MINIMALIST
+                imageUrl:
+                  type: string
+                  format: uri
+                  example: https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=900&q=80
+                poseLandmarksJson:
+                  type: array
+                  description: Exact 33 MediaPipe / Google ML Kit Pose Landmark XYZ nodes (indices 0..32)
+                  items:
+                    $ref: '#/components/schemas/PoseLandmarkNode'
+                productTags:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ProductTagInput'
+            example:
+              title: Minimalist Monochrome Tailoring AW26
+              description: Phối blazer dáng rộng cùng quần ống suông tạo tỷ lệ chân dài khi chụp góc thấp.
+              styleCategory: MINIMALIST
+              imageUrl: https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=900&q=80
+              poseLandmarksJson:
+                - { landmarkIndex: 0, x: 0.50, y: 0.14, z: -0.05, visibility: 0.99 }
+                - { landmarkIndex: 1, x: 0.51, y: 0.13, z: -0.04, visibility: 0.99 }
+                - { landmarkIndex: 2, x: 0.52, y: 0.13, z: -0.04, visibility: 0.99 }
+                - { landmarkIndex: 3, x: 0.53, y: 0.13, z: -0.04, visibility: 0.99 }
+                - { landmarkIndex: 4, x: 0.49, y: 0.13, z: -0.04, visibility: 0.99 }
+                - { landmarkIndex: 5, x: 0.48, y: 0.13, z: -0.04, visibility: 0.99 }
+                - { landmarkIndex: 6, x: 0.47, y: 0.13, z: -0.04, visibility: 0.99 }
+                - { landmarkIndex: 7, x: 0.54, y: 0.14, z: -0.02, visibility: 0.98 }
+                - { landmarkIndex: 8, x: 0.46, y: 0.14, z: -0.02, visibility: 0.98 }
+                - { landmarkIndex: 9, x: 0.51, y: 0.16, z: -0.04, visibility: 0.99 }
+                - { landmarkIndex: 10, x: 0.49, y: 0.16, z: -0.04, visibility: 0.99 }
+                - { landmarkIndex: 11, x: 0.58, y: 0.25, z: -0.01, visibility: 0.99 }
+                - { landmarkIndex: 12, x: 0.42, y: 0.25, z: -0.01, visibility: 0.99 }
+                - { landmarkIndex: 13, x: 0.62, y: 0.38, z: -0.02, visibility: 0.98 }
+                - { landmarkIndex: 14, x: 0.38, y: 0.38, z: -0.02, visibility: 0.98 }
+                - { landmarkIndex: 15, x: 0.60, y: 0.50, z: -0.05, visibility: 0.97 }
+                - { landmarkIndex: 16, x: 0.40, y: 0.50, z: -0.05, visibility: 0.97 }
+                - { landmarkIndex: 17, x: 0.61, y: 0.52, z: -0.06, visibility: 0.95 }
+                - { landmarkIndex: 18, x: 0.39, y: 0.52, z: -0.06, visibility: 0.95 }
+                - { landmarkIndex: 19, x: 0.59, y: 0.52, z: -0.06, visibility: 0.95 }
+                - { landmarkIndex: 20, x: 0.41, y: 0.52, z: -0.06, visibility: 0.95 }
+                - { landmarkIndex: 21, x: 0.59, y: 0.51, z: -0.05, visibility: 0.95 }
+                - { landmarkIndex: 22, x: 0.41, y: 0.51, z: -0.05, visibility: 0.95 }
+                - { landmarkIndex: 23, x: 0.55, y: 0.52, z: 0.00, visibility: 0.99 }
+                - { landmarkIndex: 24, x: 0.45, y: 0.52, z: 0.00, visibility: 0.99 }
+                - { landmarkIndex: 25, x: 0.56, y: 0.72, z: 0.01, visibility: 0.98 }
+                - { landmarkIndex: 26, x: 0.44, y: 0.72, z: 0.01, visibility: 0.98 }
+                - { landmarkIndex: 27, x: 0.57, y: 0.90, z: 0.03, visibility: 0.97 }
+                - { landmarkIndex: 28, x: 0.43, y: 0.90, z: 0.03, visibility: 0.97 }
+                - { landmarkIndex: 29, x: 0.58, y: 0.92, z: 0.04, visibility: 0.95 }
+                - { landmarkIndex: 30, x: 0.42, y: 0.92, z: 0.04, visibility: 0.95 }
+                - { landmarkIndex: 31, x: 0.56, y: 0.94, z: -0.01, visibility: 0.96 }
+                - { landmarkIndex: 32, x: 0.44, y: 0.94, z: -0.01, visibility: 0.96 }
+              productTags:
+                - productName: Áo Khoác Blazer Oversized Wool Blend
+                  brandName: Zara
+                  price: 1899000
+                  thumbnailUrl: https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=600&q=80
+                  affiliateUrl: https://www.zara.com/vn/en/oversized-wool-blazer-p02753102.html
+                  posX: 0.48
+                  posY: 0.36
+      responses:
+        '201':
+          description: Created lookbook with 33 pose landmarks and product tags
+        '400':
+          description: Rejected because poseLandmarksJson does not contain 33 human landmarks
+        '403':
+          description: Forbidden (Requires STYLIST role)
+
+  /api/v1/lookbooks/scrape-affiliate:
+    post:
+      tags: [Lookbooks]
+      security:
+        - bearerAuth: []
+      summary: Scrape OpenGraph product metadata from Shopee/Zara/Uniqlo URLs (with resilient fallback)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  example: https://shopee.vn/ao-khoac-bomber-streetwear-form-rong
+            examples:
+              ShopeeLink:
+                summary: Shopee Product Link
+                value:
+                  url: https://shopee.vn/ao-khoac-bomber-streetwear-form-rong
+              ZaraLink:
+                summary: Zara Product Link
+                value:
+                  url: https://www.zara.com/vn/en/heavy-cargo-pants-p012345.html
+              UniqloLink:
+                summary: Uniqlo Product Link
+                value:
+                  url: https://www.uniqlo.com/vn/vi/products/wide-fit-pleated-pants
+      responses:
+        '200':
+          description: Scraped or fallback product metadata (never fails during live demo)
+
+  /api/v1/lookbooks/{id}/like:
+    post:
+      tags: [Lookbooks]
+      security:
+        - bearerAuth: []
+      summary: Toggle like status on a lookbook (+1 / -1 likes_count)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Lookbook ID (copy an `id` from `GET /api/v1/lookbooks`)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated isLiked state and likesCount
+
+  /api/v1/tags/{id}/click:
+    post:
+      tags: [Lookbooks]
+      summary: Increment affiliate product tag click count (+1 click_count)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: ProductTag ID (copy a tag `id` from `GET /api/v1/lookbooks`)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Incremented clickCount and returned affiliateUrl
+
+  /api/v1/lookbooks/tags/{tagId}/click:
+    post:
+      tags: [Lookbooks]
+      summary: Increment affiliate product tag click count (alias route)
+      parameters:
+        - in: path
+          name: tagId
+          required: true
+          description: ProductTag ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Incremented clickCount and returned affiliateUrl
+
+  /api/v1/styling-requests/ai-enhance:
+    post:
+      tags: [Styling Requests]
+      security:
+        - bearerAuth: []
+      summary: TSK-11 — Gemini 1.5 Flash AI Co-pilot (Analyze height, weight, occasion -> Brief & 4 Hex colors in < 3s)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [heightCm, weightKg, occasion]
+              properties:
+                heightCm:
+                  type: integer
+                  example: 175
+                weightKg:
+                  type: integer
+                  example: 68
+                occasion:
+                  type: string
+                  example: Cyber Concert Weekend 2026
+                vibe:
+                  type: string
+                  example: Cyberpunk Streetwear
+                bodyType:
+                  type: string
+                  example: Balanced Athletic
+                briefText:
+                  type: string
+                  example: Cần phối đồ đi concert ngoài trời buổi tối, thoải mái để chụp ảnh góc rộng.
+                totalBudget:
+                  type: number
+                  example: 2500000
+      responses:
+        '200':
+          description: Enhanced brief and 4-color Hex palette generated in < 3 seconds
+
+  /api/v1/styling-requests:
+    get:
+      tags: [Styling Requests]
+      security:
+        - bearerAuth: []
+      summary: TSK-14 — List Styling Orders for Client / Stylist Inbox with Gross, 15% Fee & 85% Net Payout breakdown
+      parameters:
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: [PENDING_ACCEPTANCE, PENDING_DEPOSIT, IN_PROGRESS, ESCROW_FROZEN, COMPLETED]
+      responses:
+        '200':
+          description: Role-filtered list of styling requests with per-stage Gross/Fee/Net breakdown
+    post:
+      tags: [Styling Requests]
+      security:
+        - bearerAuth: []
+      summary: TSK-12 — Create Styling Order (#REQ-XXXX) and generate dynamic SePay VietQR (Requires CLIENT role)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [briefText, totalBudget]
+              properties:
+                stylistId:
+                  type: string
+                  description: Optional Stylist UUID (defaults to Maya Trần if omitted)
+                title:
+                  type: string
+                  example: Urban Minimalist Editorial AW26
+                briefText:
+                  type: string
+                  example: Tailored for 175cm / 68kg. Clean monochrome layering with wide pleated trousers for outdoor concert.
+                occasion:
+                  type: string
+                  example: Outdoor Concert & Rooftop Dinner
+                vibe:
+                  type: string
+                  example: Minimalist Streetwear
+                bodyType:
+                  type: string
+                  example: Athletic
+                aiPaletteJson:
+                  type: array
+                  items:
+                    type: string
+                  example: ['#09090B', '#F43F5E', '#10B981', '#A855F7']
+                totalBudget:
+                  type: number
+                  example: 2500000
+      responses:
+        '201':
+          description: Created PENDING_DEPOSIT styling order with dynamic SePay VietQR URL
+
+  /api/v1/styling-requests/{id}:
+    get:
+      tags: [Styling Requests]
+      security:
+        - bearerAuth: []
+      summary: TSK-14 — Get Styling Order Detail with 30-30-40 Gross/15% Fee/85% Net Payout, Submissions & Ledger
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: StylingRequest UUID or Order Code (e.g. `REQ-8452`)
+          schema:
+            type: string
+            example: REQ-8452
+      responses:
+        '200':
+          description: Full contract detail, 3-stage breakdown, submissions, product tags, and escrow ledger
+
+  /api/v1/styling-requests/{id}/simulate-deposit:
+    post:
+      tags: [Styling Requests]
+      security:
+        - bearerAuth: []
+      summary: 1-Click Demo Helper — Simulate SePay VietQR 100% Escrow Deposit for Order
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: StylingRequest UUID or Order Code (e.g. `REQ-4829`)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Escrow deposit settled, 85% Net locked in Stylist Wallet, and 3 stages created
+
+  /api/v1/webhooks/sepay:
+    post:
+      tags: [Webhooks]
+      summary: TSK-13 — SePay VietQR Escrow Webhook (ACID idempotent deposit, lock 85% Net & split 30-30-40 milestones)
+      parameters:
+        - in: header
+          name: x-sepay-webhook-secret
+          required: false
+          description: Webhook secret matching SEPAY_WEBHOOK_SECRET in .env
+          schema:
+            type: string
+            default: sepay_posenova_webhook_secret_2026
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content, transferAmount, referenceCode]
+              properties:
+                gateway:
+                  type: string
+                  example: MBBank
+                content:
+                  type: string
+                  description: Transfer description containing the order code (e.g. POSENOVA REQ4829)
+                  example: POSENOVA REQ-8452
+                transferType:
+                  type: string
+                  example: in
+                transferAmount:
+                  type: number
+                  example: 2500000
+                referenceCode:
+                  type: string
+                  description: Unique bank reference code enforced for idempotency
+                  example: FT2630299105
+      responses:
+        '200':
+          description: Idempotent ACID deposit processed and 3 milestones created
+
+  /api/v1/milestones/{id}/submit:
+    post:
+      tags: [Milestones]
+      security:
+        - bearerAuth: []
+      summary: TSK-15 — Stylist submits stage deliverable, logs MilestoneSubmission & starts 48h SLA timer
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: RequestMilestone UUID (copy from `GET /api/v1/styling-requests/REQ-8452`)
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deliverableUrl]
+              properties:
+                deliverableTitle:
+                  type: string
+                  example: Stage 2 Curated Techwear Outfit & Affiliate Links
+                deliverableUrl:
+                  type: string
+                  format: uri
+                  example: https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=800&q=80
+                stylistNotes:
+                  type: string
+                  example: Đã chọn áo khoác bomber chống gió kèm quần cargo ống rộng tôn dáng 175cm. Bấm vào ghim để xem link mua.
+                poseLandmarksJson:
+                  type: array
+                  description: Optional 33-node pose skeleton (used on Stage 3 Final Lookbook)
+                  items:
+                    $ref: '#/components/schemas/PoseLandmarkNode'
+                productTags:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ProductTagInput'
+            example:
+              deliverableTitle: Stage 2 Curated Techwear Outfit & Affiliate Links
+              deliverableUrl: https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=800&q=80
+              stylistNotes: Đã chọn áo khoác bomber chống gió kèm quần cargo ống rộng tôn dáng 175cm.
+              productTags:
+                - productName: Cyber Reflective Tech Bomber
+                  brandName: Zara
+                  price: 1899000
+                  thumbnailUrl: https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?w=200&q=80
+                  affiliateUrl: https://www.zara.com/vn/en/reflective-bomber-p012345.html
+                  posX: 0.42
+                  posY: 0.35
+      responses:
+        '200':
+          description: Milestone switched to IN_REVIEW, submission saved, and 48h SLA timer armed
+
+  /api/v1/milestones/{id}/approve:
+    post:
+      tags: [Milestones]
+      security:
+        - bearerAuth: []
+      summary: TSK-16 — Client approves stage (ACID release of 85% Net Payout, anti-double-click guard & unlock next stage)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: RequestMilestone UUID
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                feedback:
+                  type: string
+                  example: Outfit rất ưng ý, mở khóa chặng tiếp theo nhé!
+      responses:
+        '200':
+          description: Released 85% Net Payout from Escrow Locked to Available Balance and unlocked next stage
+        '409':
+          description: Duplicate approval blocked by atomic anti-double-release guard
+
+  /api/v1/milestones/{id}/request-revision:
+    post:
+      tags: [Milestones]
+      security:
+        - bearerAuth: []
+      summary: TSK-17 — Client requests revision (Enforces max 2 free revisions per stage)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: RequestMilestone UUID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [feedback]
+              properties:
+                feedback:
+                  type: string
+                  example: Nhờ bạn đổi sang quần ống rộng màu đen nhám để dễ phối giày hơn nhé.
+      responses:
+        '200':
+          description: Incremented revisionCount and paused 48h SLA timer
+        '400':
+          description: Blocked when revision_count >= 2 (instructs Client to Approve or open Dispute)
+
+  /api/v1/disputes:
+    get:
+      tags: [Disputes]
+      security:
+        - bearerAuth: []
+      summary: List disputes for current Client / Stylist / Admin
+      responses:
+        '200':
+          description: Array of disputes
+    post:
+      tags: [Disputes]
+      security:
+        - bearerAuth: []
+      summary: TSK-18 — Open Dispute (Freeze Escrow ESCROW_FROZEN & Auto-Refund 70% or 40% unapproved stages to Client)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                milestoneId:
+                  type: string
+                  description: Contested RequestMilestone UUID (must have used 2/2 revisions)
+                requestId:
+                  type: string
+                  description: StylingRequest UUID or Order Code (e.g. REQ-8452)
+                reason:
+                  type: string
+                  example: Đã sửa đủ 2 lần ở Chặng 2 nhưng phom dáng vẫn chưa phù hợp với số đo cơ thể.
+      responses:
+        '201':
+          description: Escrow frozen, Stylist retains approved stage earnings, and Client receives remaining 70% or 40% refund
+
+  /api/v1/wallets/me:
+    get:
+      tags: [Cyber Wallet]
+      security:
+        - bearerAuth: []
+      summary: TSK-19 — Retrieve Cyber Wallet balances, mathematical reconciliation proof, and immutable Escrow Ledger
+      responses:
+        '200':
+          description: Wallet balances, 0-discrepancy reconciliation formula, and transaction ledger
+
+  /api/v1/wallets/withdraw:
+    post:
+      tags: [Cyber Wallet]
+      security:
+        - bearerAuth: []
+      summary: TSK-19 — Withdraw available earnings to linked bank account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount:
+                  type: number
+                  minimum: 50000
+                  example: 500000
+                bankName:
+                  type: string
+                  example: Vietcombank
+                bankAccountNo:
+                  type: string
+                  example: '0071001234567'
+                bankAccountHolder:
+                  type: string
+                  example: MAYA TRAN
+                note:
+                  type: string
+                  example: Rút thu nhập khả dụng về tài khoản ngân hàng
+      responses:
+        '200':
+          description: Debited availableBalance, incremented totalWithdrawn, and logged WITHDRAWAL transaction
+
+  /api/v1/withdraw:
+    post:
+      tags: [Cyber Wallet]
+      security:
+        - bearerAuth: []
+      summary: TSK-19 — Withdraw available earnings to linked bank account (alias route)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount:
+                  type: number
+                  minimum: 50000
+                  example: 500000
+      responses:
+        '200':
+          description: Withdrawal processed successfully
+
+  /api/v1/wallets/bank-account:
+    put:
+      tags: [Cyber Wallet]
+      security:
+        - bearerAuth: []
+      summary: Update linked bank account details on Cyber Wallet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bankName, bankAccountNo, bankAccountHolder]
+              properties:
+                bankName:
+                  type: string
+                  example: Vietcombank
+                bankAccountNo:
+                  type: string
+                  example: '0071001234567'
+                bankAccountHolder:
+                  type: string
+                  example: MAYA TRAN
+      responses:
+        '200':
+          description: Updated bank account info
+
+  /api/v1/styling-requests/{id}/reviews:
+    post:
+      tags: [Styling Requests]
+      security:
+        - bearerAuth: []
+      summary: Submit Client rating & AI Pose Match Score review for a COMPLETED styling contract
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: StylingRequest UUID or Order Code
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  example: 5
+                comment:
+                  type: string
+                  example: Khung xương AI 33 điểm giúp căn góc chụp cực chuẩn, outfit vừa vặn 100%!
+                capturedImageUrl:
+                  type: string
+                  format: uri
+                  example: https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&q=80
+                poseMatchScore:
+                  type: number
+                  example: 97.8
+      responses:
+        '201':
+          description: Created review and recalculated Stylist ratingAvg & totalReviews
