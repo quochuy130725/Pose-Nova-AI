@@ -33,15 +33,28 @@ export const poseLandmarkNodeSchema = z.object({
   visibility: z.coerce.number().min(0).max(1).optional(),
 });
 
-export const productTagInputSchema = z.object({
-  productName: z.string().min(1, 'Product name is required').trim(),
-  brandName: z.string().trim().optional(),
-  price: z.coerce.number().nonnegative('Price must be >= 0'),
-  thumbnailUrl: z.string().url().optional(),
-  affiliateUrl: z.string().trim().min(1).transform(normalizeInputUrl),
-  posX: z.coerce.number().min(0).max(1),
-  posY: z.coerce.number().min(0).max(1),
-});
+export const productTagInputSchema = z
+  .object({
+    productName: z.string().trim().optional(),
+    itemName: z.string().trim().optional(),
+    brandName: z.string().trim().optional(),
+    price: z.coerce.number().nonnegative('Price must be >= 0'),
+    thumbnailUrl: z.string().url().optional(),
+    affiliateUrl: z.string().trim().min(1).transform(normalizeInputUrl),
+    posX: z.coerce.number().min(0).max(1).optional(),
+    posY: z.coerce.number().min(0).max(1).optional(),
+    xCoord: z.coerce.number().min(0).max(1).optional(),
+    yCoord: z.coerce.number().min(0).max(1).optional(),
+  })
+  .transform((data) => ({
+    productName: data.productName ?? data.itemName ?? 'Cyber Style Item',
+    brandName: data.brandName,
+    price: data.price,
+    thumbnailUrl: data.thumbnailUrl,
+    affiliateUrl: data.affiliateUrl,
+    posX: data.posX ?? data.xCoord ?? 0.5,
+    posY: data.posY ?? data.yCoord ?? 0.5,
+  }));
 
 export const createLookbookBodySchema = z
   .object({

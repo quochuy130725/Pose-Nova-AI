@@ -137,6 +137,7 @@ Total Deposit
 - **Stylist Protection:** The Stylist retains the 637,500 VND net payout already earned from an approved Stage 01.
 - **Client Protection:** If a dispute occurs at Stage 02, the unapproved Stage 02 (30%) and Stage 03 (40%) funds, totaling 1,750,000 VND, are frozen and refunded to the Client.
 - **Escrow State:** Disputed funds transition to `ESCROW_FROZEN` until the refund process is resolved.
+
 ### 📸 5. On-Device AI Camera & Privacy Architecture
 
 PoseNova AI is designed around a Privacy-First, Edge-Computing Vision Pipeline.
@@ -146,6 +147,7 @@ PoseNova AI is designed around a Privacy-First, Edge-Computing Vision Pipeline.
 | Real-Time Pose Detection | `google_mlkit_pose_detection`, 30 FPS | Camera frames are processed in volatile device RAM during live pose matching; raw preview frames are not written to disk or uploaded to external servers. |
 | Local Photo Storage | `gal` package | Captured high-resolution photos are saved directly to the smartphone's native photo album (`DCIM/PoseNova`). |
 | Cloud Upload | Strict opt-in | Personal photos remain on-device unless the Client explicitly attaches a photo to a review or opts in to sharing on the community feed. |
+
 ### 🗄️ 6. Database Schema & Entity Relationships
 
 The PostgreSQL database is structured around the following core entities, managed through Prisma ORM.
@@ -172,6 +174,7 @@ The PostgreSQL database is structured around the following core entities, manage
 | `request_milestones` | `id` (UUID) | `request_id`, `stage_order`, `percentage`, `gross_amount`, `net_payout`, `revision_count`, `status` | Controls stage deliverables, revision limits, and 48-hour SLA timers. |
 | `payment_transactions` | `id` (UUID) | `request_id`, `milestone_id`, `wallet_id`, `type`, `gross_amount`, `fee_amount`, `net_amount`, `sepay_ref_code` | Maintains the immutable escrow audit ledger. |
 | `disputes` | `id` (UUID) | `request_id`, `milestone_id`, `reason`, `remaining_refund_amount`, `status` | Manages disputes and partial refunds for unapproved stages. |
+
 ### 🔌 7. RESTful API Specification
 
 #### A. Auth & Discovery Module — Workflows 1 & 2
@@ -201,35 +204,7 @@ The PostgreSQL database is structured around the following core entities, manage
 | `POST` | `/api/v1/disputes` | Freeze escrow and refund unapproved stage funds. | Client |
 | `GET` | `/api/v1/wallets/me` | Retrieve wallet balances and the immutable escrow ledger. | Stylist |
 | `POST` | `/api/v1/wallets/withdraw` | Withdraw available net earnings to the linked bank account. | Stylist |
-### 🔌 7. RESTful API Specification
 
-#### A. Auth & Discovery Module — Workflows 1 & 2
-
-| Method | Endpoint | Description | Auth |
-|---|---|---|---|
-| `POST` | `/api/v1/auth/demo-login` | Instant one-tap persona login (Client / Stylist). | Public |
-| `GET` | `/api/v1/lookbooks` | Fetch lookbooks with 33 pose landmarks and affiliate tags. | Public |
-| `POST` | `/api/v1/lookbooks/scrape-affiliate` | Scrape OpenGraph metadata from product URLs. | Stylist |
-| `POST` | `/api/v1/lookbooks` | Publish a lookbook with verified skeletal data and product tags. | Stylist |
-
-#### B. Styling Request & SePay Escrow Module — Workflow 3
-
-| Method | Endpoint | Description | Auth |
-|---|---|---|---|
-| `POST` | `/api/v1/styling-requests/ai-enhance` | Refine the styling brief and generate a four-color palette using Gemini AI. | Client |
-| `POST` | `/api/v1/styling-requests` | Create a styling order and generate a SePay VietQR payment payload. | Client |
-| `POST` | `/api/v1/webhooks/sepay` | Receive idempotent VietQR payment confirmations, lock escrow funds, and initialize three stages. | Webhook Secret |
-
-#### C. Milestone Execution, Wallet & Dispute Module — Workflows 3 & 4
-
-| Method | Endpoint | Description | Auth |
-|---|---|---|---|
-| `POST` | `/api/v1/milestones/:id/submit` | Submit stage deliverables, pose nodes, and affiliate tags; start the SLA timer. | Stylist |
-| `POST` | `/api/v1/milestones/:id/approve` | Approve a stage, transfer the stylist's net payout, and unlock the next stage. | Client |
-| `POST` | `/api/v1/milestones/:id/request-revision` | Request revisions while enforcing the two-revision limit. | Client |
-| `POST` | `/api/v1/disputes` | Freeze escrow and refund unapproved stage funds. | Client |
-| `GET` | `/api/v1/wallets/me` | Retrieve wallet balances and the immutable escrow ledger. | Stylist |
-| `POST` | `/api/v1/wallets/withdraw` | Withdraw available net earnings to the linked bank account. | Stylist |
 ### 📂 8. Project Directory Structure
 
 ```text
@@ -271,6 +246,7 @@ posenova-platform/
             ├── escrow-wallet/
             └── disputes/
 ```
+
 ### 🚀 9. Getting Started & Installation
 
 #### Prerequisites
@@ -309,6 +285,7 @@ flutter pub get
 # Run on a connected device or emulator
 flutter run
 ```
+
 ### 🎬 10. 5-Minute Evaluation & Demo Script
 
 Designed for live demonstration during a capstone defense or product pitch.
@@ -328,5 +305,3 @@ Designed for live demonstration during a capstone defense or product pitch.
 This project is developed for academic capstone evaluation and R&D demonstration.
 
 **All rights reserved © 2026 PoseNova AI Team.**
-
-

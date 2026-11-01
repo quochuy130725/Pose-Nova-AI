@@ -59,12 +59,20 @@ export const listStylingRequestsQuerySchema = z.object({
     .optional(),
 });
 
-export const createReviewBodySchema = z.object({
-  rating: z.coerce.number().int().min(1).max(5),
-  comment: z.string().trim().max(2000).optional(),
-  capturedImageUrl: z.string().url().optional(),
-  poseMatchScore: z.coerce.number().min(0).max(100).optional(),
-});
+export const createReviewBodySchema = z
+  .object({
+    rating: z.coerce.number().int().min(1).max(5),
+    comment: z.string().trim().max(2000).optional(),
+    capturedImageUrl: z.string().url().optional(),
+    poseMatchScore: z.coerce.number().min(0).max(100).optional(),
+    aiPoseScore: z.coerce.number().min(0).max(100).optional(),
+  })
+  .transform((data) => ({
+    rating: data.rating,
+    comment: data.comment,
+    capturedImageUrl: data.capturedImageUrl,
+    poseMatchScore: data.poseMatchScore ?? data.aiPoseScore,
+  }));
 
 export type AiEnhanceBriefBody = z.infer<typeof aiEnhanceBriefBodySchema>;
 export type CreateStylingRequestBody = z.infer<typeof createStylingRequestBodySchema>;

@@ -3,7 +3,7 @@ import { env } from './config/env';
 import { prisma } from './config/database';
 import { startSlaAutoReleaseJob } from './jobs/sla-auto-release.job';
 
-const server = app.listen(env.PORT, () => {
+const server = app.listen(env.PORT, '0.0.0.0', () => {
   console.log(`====================================================`);
   console.log(`🚀 PoseNova AI Server running on port ${env.PORT}`);
   console.log(`📡 Health Check: http://localhost:${env.PORT}/api/v1/health`);

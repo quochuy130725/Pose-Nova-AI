@@ -121,7 +121,24 @@ export class AuthService {
       include: { wallet: true },
     });
 
-    if (!user || !user.passwordHash) {
+    if (!user) {
+      throw new AppError('Invalid email or password.', 401);
+    }
+
+    if (!user.passwordHash) {
+      // Seeded demo account without password hash: allow standard demo password
+      if (input.password === 'password123' || input.password === '123456') {
+        const passwordHash = await bcrypt.hash(input.password, 10);
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { passwordHash },
+        });
+        const token = signAuthToken(user);
+        return {
+          token,
+          user: sanitizeUser(user),
+        };
+      }
       throw new AppError('Invalid email or password.', 401);
     }
 

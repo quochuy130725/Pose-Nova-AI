@@ -7,15 +7,20 @@ import {
 export const submitMilestoneBodySchema = z
   .object({
     deliverableTitle: z.string().trim().max(150).optional(),
-    deliverableUrl: z.string().url('Valid deliverableUrl is required'),
+    deliverableUrl: z.string().url('Valid deliverableUrl is required').optional(),
+    deliverableImageUrl: z.string().url().optional(),
     stylistNotes: z.string().trim().max(2000).optional(),
     poseLandmarksJson: z.array(poseLandmarkNodeSchema).optional(),
     poseLandmarks: z.array(poseLandmarkNodeSchema).optional(),
     productTags: z.array(productTagInputSchema).optional(),
   })
+  .refine((data) => Boolean(data.deliverableUrl || data.deliverableImageUrl), {
+    message: 'Valid deliverableUrl (or deliverableImageUrl) is required',
+    path: ['deliverableUrl'],
+  })
   .transform((data) => ({
     deliverableTitle: data.deliverableTitle,
-    deliverableUrl: data.deliverableUrl,
+    deliverableUrl: (data.deliverableUrl ?? data.deliverableImageUrl) as string,
     stylistNotes: data.stylistNotes,
     poseLandmarksJson: data.poseLandmarksJson ?? data.poseLandmarks,
     productTags: data.productTags,

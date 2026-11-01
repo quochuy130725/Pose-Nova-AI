@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: posenova-ai-backend
+    runtime: node
+    region: singapore
+    plan: free
+    rootDir: Back-end
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: ENABLE_DEMO_LOGIN
+        value: "true"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SEPAY_WEBHOOK_SECRET
+        sync: false
+      - key: SEPAY_BANK_CODE
+        value: MBBank
+      - key: SEPAY_ACCOUNT_NO
+        value: "0829100286"
+      - key: SEPAY_ACCOUNT_NAME
+        value: "PHAM HUYNH QUOC HUY"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        value: posenova-media

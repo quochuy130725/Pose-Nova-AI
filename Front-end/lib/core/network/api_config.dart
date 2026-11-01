@@ -66,6 +66,11 @@ class ApiConfig {
     final envBaseUrl = _env['API_BASE_URL'];
     final envAndroidUrl = _env['API_BASE_URL_ANDROID'];
 
+    // If API_BASE_URL is a remote HTTPS URL (e.g. Render production URL), prioritize it on all devices
+    if (envBaseUrl != null && envBaseUrl.startsWith('https://')) {
+      return envBaseUrl;
+    }
+
     if (!kIsWeb) {
       try {
         if (Platform.isAndroid && envAndroidUrl != null && envAndroidUrl.isNotEmpty) {
@@ -91,6 +96,15 @@ class ApiConfig {
 
     if (kIsWeb) {
       return [envBaseUrl];
+    }
+
+    if (envBaseUrl.startsWith('https://')) {
+      return [
+        envBaseUrl,
+        envLanUrl,
+        envAndroidUrl,
+        'http://127.0.0.1:3000$_defaultApiPrefix',
+      ];
     }
 
     try {

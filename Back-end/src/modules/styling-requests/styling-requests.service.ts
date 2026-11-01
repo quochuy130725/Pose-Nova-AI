@@ -456,15 +456,27 @@ export class StylingRequestsService {
         _count: { rating: true },
       });
 
-      await tx.user.update({
+      const updatedStylist = await tx.user.update({
         where: { id: order.stylistId },
         data: {
           ratingAvg: Number((agg._avg.rating ?? input.rating).toFixed(2)),
           totalReviews: agg._count.rating,
         },
+        select: {
+          id: true,
+          fullName: true,
+          ratingAvg: true,
+          totalReviews: true,
+        },
       });
 
-      return review;
+      return {
+        ...review,
+        stylistUpdatedRating: {
+          ratingAvg: Number(updatedStylist.ratingAvg),
+          totalReviews: updatedStylist.totalReviews,
+        },
+      };
     });
   }
 }
