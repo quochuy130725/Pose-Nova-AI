@@ -1,10 +1,25 @@
 import { Express, Request, Response, NextFunction } from 'express';
+import fs from 'fs';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 
+function getOpenApiPath(): string {
+  const candidates = [
+    path.resolve(process.cwd(), 'docs/openapi.yaml'),
+    path.resolve(process.cwd(), 'Back-end/docs/openapi.yaml'),
+    path.resolve(__dirname, '../../../docs/openapi.yaml'),
+    path.resolve(__dirname, '../../docs/openapi.yaml'),
+    path.resolve(__dirname, '../docs/openapi.yaml'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return candidates[0];
+}
+
 export function setupSwagger(app: Express): void {
-  const openapiPath = path.resolve(__dirname, '../../docs/openapi.yaml');
+  const openapiPath = getOpenApiPath();
 
   app.get('/api-docs/openapi.json', (_req: Request, res: Response) => {
     try {

@@ -7,6 +7,8 @@ info:
     30-30-40 Milestone Escrow API. Use the Authorize button with the JWT token
     returned from /api/v1/auth/demo-login or /api/v1/auth/login.
 servers:
+  - url: https://pose-nova-ai.onrender.com
+    description: Production Cloud Server (Render Live)
   - url: http://localhost:3000
     description: Local Development Server
 components:
@@ -537,6 +539,13 @@ paths:
           description: Escrow deposit settled, 85% Net locked in Stylist Wallet, and 3 stages created
 
   /api/v1/webhooks/sepay:
+    get:
+      tags: [Webhooks]
+      summary: SePay Webhook Health & Ping Endpoint
+      description: Returns HTTP 200 OK for SePay server ping checks and Uptime probes.
+      responses:
+        '200':
+          description: Webhook endpoint is active and listening
     post:
       tags: [Webhooks]
       summary: TSK-13 — SePay VietQR Escrow Webhook (ACID idempotent deposit, lock 85% Net & split 30-30-40 milestones)
