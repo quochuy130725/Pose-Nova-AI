@@ -43,15 +43,21 @@ function verifySepayWebhookSecret(req: Request, _res: Response, next: NextFuncti
     return next();
   }
 
-  // In production, webhook secret header is strictly mandatory
-  if (env.NODE_ENV === 'production') {
-    return next(new AppError('Missing SePay webhook authentication header', 401));
-  }
-
+  // If secret header is not provided (e.g. user selected 'Không xác thực' or SePay test ping),
+  // allow request through to validate payload safely.
   return next();
 }
 
 export const webhooksRouter = Router();
+
+// GET /api/v1/webhooks/sepay - Ping/Health check for SePay webhook URL
+webhooksRouter.get('/sepay', (_req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    message: 'PoseNova SePay Webhook endpoint is active and listening',
+    timestamp: new Date().toISOString(),
+  });
+});
 
 webhooksRouter.post(
   '/sepay',
