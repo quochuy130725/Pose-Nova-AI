@@ -40,3 +40,4 @@ services:
         sync: false
       - key: SUPABASE_BUCKET
         value: posenova-media
+

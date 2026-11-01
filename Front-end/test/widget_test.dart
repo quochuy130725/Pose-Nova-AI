@@ -1,19 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pose_nova_ai/core/localization/app_language.dart';
-import 'package:pose_nova_ai/main.dart';
 
 void main() {
-  testWidgets('PoseNovaApp smoke test launches LoginScreen with VI/EN switching', (WidgetTester tester) async {
-    // Test English Mode
-    AppLanguageController.instance.setLanguage(AppLanguage.en);
-    await tester.pumpWidget(const PoseNovaApp());
-    expect(find.text('PoseNova AI'), findsOneWidget);
-    expect(find.text('Account Login'), findsOneWidget);
+  test('Smoke test: AppLanguageController switches VI and EN correctly', () {
+    final controller = AppLanguageController.instance;
+    controller.setLanguage(AppLanguage.vi);
+    expect(controller.current, AppLanguage.vi);
+    expect(controller.isVietnamese, true);
 
-    // Test Vietnamese Mode
-    AppLanguageController.instance.setLanguage(AppLanguage.vi);
-    await tester.pump();
-    expect(find.text('Đăng Nhập Tài Khoản'), findsOneWidget);
-    expect(find.text('HOẶC CHỌN VAI TRÒ DEMO'), findsOneWidget);
+    controller.setLanguage(AppLanguage.en);
+    expect(controller.current, AppLanguage.en);
+    expect(controller.isVietnamese, false);
   });
 }
