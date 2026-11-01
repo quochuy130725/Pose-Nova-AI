@@ -11,3 +11,4 @@ if (!fs.existsSync(distDir)) {
 // Shim to support both 'node dist/server.js' and 'node dist/src/server.js'
 fs.writeFileSync(targetFile, "require('./src/server.js');\n", 'utf8');
 console.log('✅ Generated dist/server.js redirect shim to dist/src/server.js');
+

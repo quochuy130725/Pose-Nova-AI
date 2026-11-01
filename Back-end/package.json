@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "npx prisma generate && tsc && node scripts/postbuild.js",
+    "postinstall": "npx prisma generate && tsc && node scripts/postbuild.js",
+    "prestart": "npm run build",
     "start": "node dist/src/server.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
