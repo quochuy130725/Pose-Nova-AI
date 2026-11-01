@@ -3,24 +3,26 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
-import 'presentation/screens/auth/login_screen.dart';
-import 'presentation/screens/create_styling_request_screen.dart';
-import 'presentation/screens/discovery_feed_screen.dart';
-import 'presentation/screens/dispute_review_screen.dart';
-import 'presentation/screens/escrow_checkout_screen.dart';
-import 'presentation/screens/milestone_workspace_screen.dart';
-import 'presentation/screens/pose_camera_screen.dart';
-import 'presentation/screens/stylist_inbox_screen.dart';
-import 'presentation/screens/stylist_wallet_screen.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/create_styling_request_screen.dart';
+import 'screens/discovery_feed_screen.dart';
+import 'screens/dispute_review_screen.dart';
+import 'screens/escrow_checkout_screen.dart';
+import 'screens/milestone_workspace_screen.dart';
+import 'screens/pose_camera_screen.dart';
+import 'screens/stylist_inbox_screen.dart';
+import 'screens/stylist_wallet_screen.dart';
 import 'core/localization/app_language.dart';
-import 'presentation/widgets/brutalist_badge.dart';
-import 'presentation/widgets/brutalist_card.dart';
-import 'presentation/widgets/fashion_dock_button.dart';
-import 'presentation/widgets/language_switch_pill.dart';
-import 'presentation/widgets/technical_grid_background.dart';
+import 'widgets/brutalist_badge.dart';
+import 'widgets/brutalist_card.dart';
+import 'widgets/fashion_dock_button.dart';
+import 'widgets/language_switch_pill.dart';
+import 'core/network/api_config.dart';
+import 'widgets/technical_grid_background.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ApiConfig.loadEnv();
   runApp(const PoseNovaApp());
 }
 

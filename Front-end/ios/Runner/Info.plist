@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>PoseNova AI can camera de nhan dien tu the va chup anh phoi do ngay tren thiet bi.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>PoseNova AI luu anh tao dang vao thu vien anh cua ban. Anh khong duoc tai len cloud.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>PoseNova AI can quyen thu vien anh de luu anh tao dang.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
