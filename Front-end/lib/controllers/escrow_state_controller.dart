@@ -28,9 +28,11 @@ class EscrowStateController extends ChangeNotifier {
 
   /// Active styling order request map
   Map<String, dynamic>? get activeStylingRequest =>
-      _cachedOrder ?? StylingRequestProvider.instance.activeRequest;
+      StylingRequestProvider.instance.activeRequest ?? _cachedOrder;
 
-  bool get hasActiveOrder => activeStylingRequest != null;
+  bool get hasActiveOrder =>
+      StylingRequestProvider.instance.hasActiveOrder ||
+      (_cachedOrder != null && (_cachedOrder!['code']?.toString().isNotEmpty ?? false));
 
   String get activeOrderCode {
     final raw = activeStylingRequest?['code']?.toString() ?? '';
@@ -81,57 +83,19 @@ class EscrowStateController extends ChangeNotifier {
     if (_isInitialized) return;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final orderJson = prefs.getString(_storageKeyOrder);
-      if (orderJson != null && orderJson.isNotEmpty) {
-        final decoded = jsonDecode(orderJson);
-        if (decoded is Map<String, dynamic>) {
-          final code = decoded['code']?.toString() ?? '';
-          final budget = decoded['totalBudget'];
-          // Purge stale mock order (#REQ-8452 or 2.500.000đ mock)
-          if (code.contains('8452') || budget == 2500000) {
-            await prefs.remove(_storageKeyOrder);
-            await prefs.remove(_storageKeyStages);
-            await prefs.remove(_storageKeyDeliverables);
-            _cachedOrder = null;
-          } else {
-            _cachedOrder = decoded;
-            StylingRequestProvider.instance.restoreActiveRequest(decoded);
-          }
-        }
-      }
-
-      final stagesJson = prefs.getString(_storageKeyStages);
-      if (stagesJson != null && stagesJson.isNotEmpty) {
-        final decodedStages = jsonDecode(stagesJson);
-        if (decodedStages is Map) {
-          final mapped = <int, String>{};
-          decodedStages.forEach((k, v) {
-            final order = int.tryParse(k.toString());
-            if (order != null && v is String) {
-              mapped[order] = v;
-            }
-          });
-          if (mapped.isNotEmpty) {
-            _cachedStageStatuses = mapped;
-            StylingRequestProvider.instance.restoreStageStatuses(mapped);
-          }
-        }
-      }
-
-      final deliverablesJson = prefs.getString(_storageKeyDeliverables);
-      if (deliverablesJson != null && deliverablesJson.isNotEmpty) {
-        final decodedDelivs = jsonDecode(deliverablesJson);
-        if (decodedDelivs is Map) {
-          decodedDelivs.forEach((k, v) {
-            final order = int.tryParse(k.toString());
-            if (order != null && v is Map) {
-              _stageDeliverables[order] = Map<String, dynamic>.from(v);
-            }
-          });
-        }
-      }
+      // Always purge stale disk cache on app start so the server is the single source of truth
+      await prefs.remove(_storageKeyOrder);
+      await prefs.remove(_storageKeyStages);
+      await prefs.remove(_storageKeyDeliverables);
+      _cachedOrder = null;
+      _cachedStageStatuses = {
+        1: 'ACTIVE',
+        2: 'LOCKED',
+        3: 'LOCKED',
+      };
+      _stageDeliverables.clear();
     } catch (e) {
-      debugPrint('Error restoring EscrowStateController: $e');
+      debugPrint('Error initializing EscrowStateController: $e');
     } finally {
       _isInitialized = true;
       _syncWallet();

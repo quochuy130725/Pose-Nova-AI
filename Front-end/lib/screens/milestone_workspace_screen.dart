@@ -262,6 +262,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
   int _selectedStageIndex = 0; // Stage 1 active by default
 
   bool isStageApproved(int stageOrder) {
+    if (!StylingRequestProvider.instance.hasActiveOrder) return false;
     if (stageOrder == 1) {
       return _stage1Approved ||
           StylingRequestProvider.instance.isStageApproved(1) ||
@@ -285,6 +286,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
   bool get isStage3Approved => isStageApproved(3);
 
   bool isStageInReview(int stageOrder) {
+    if (!StylingRequestProvider.instance.hasActiveOrder) return false;
     if (isStageApproved(stageOrder)) return false;
     if (_selectedStageIndex + 1 == stageOrder && _isSubmitted) return true;
     return EscrowStateController.instance.isStageInReview(stageOrder) ||
@@ -292,6 +294,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
   }
 
   bool isStageActive(int stageOrder) {
+    if (!StylingRequestProvider.instance.hasActiveOrder) return false;
     if (isStageApproved(stageOrder) || isStageInReview(stageOrder)) return false;
     if (stageOrder == 1) return true;
     if (stageOrder == 2) return isStage1Approved;
@@ -300,6 +303,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
   }
 
   bool isStageLocked(int stageOrder) {
+    if (!StylingRequestProvider.instance.hasActiveOrder) return false;
     if (stageOrder == 1) return false;
     if (stageOrder == 2) return !isStage1Approved;
     if (stageOrder == 3) return !isStage2Approved;

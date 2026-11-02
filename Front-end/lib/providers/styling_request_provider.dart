@@ -101,11 +101,16 @@ class StylingRequestProvider extends ChangeNotifier {
         _syncWalletWithActiveOrder(notify: false);
         EscrowStateController.instance.saveActiveOrder(_activeRequest!);
       } else {
+        // When server has no active requests, clear active order completely so no zombie orders show up
         _requests = [];
-        // CRITICAL: NEVER wipe out active order if user already has an active order in session
-        if (_activeRequest == null) {
-          WalletProvider.instance.clearActiveOrderState(notify: false);
-        }
+        _activeRequest = null;
+        _stageStatuses = {
+          1: 'ACTIVE',
+          2: 'LOCKED',
+          3: 'LOCKED',
+        };
+        await EscrowStateController.instance.clearActiveOrder();
+        WalletProvider.instance.clearActiveOrderState(notify: true);
       }
     } catch (e) {
       _errorMessage = e.toString();
