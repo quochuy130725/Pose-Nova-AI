@@ -909,7 +909,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
               boxShadow: AppColors.buttonShadow,
             ),
             child: Text(
-              'Escrow Protected',
+              AppLanguageController.instance.isEnglish ? 'Escrow Protected' : 'Bảo Vệ Ký Quỹ',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 10,
                 fontWeight: FontWeight.w800,

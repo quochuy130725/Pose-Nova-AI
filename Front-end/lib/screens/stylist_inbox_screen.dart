@@ -28,12 +28,107 @@ class StylistInboxScreen extends StatefulWidget {
 class _StylistInboxScreenState extends State<StylistInboxScreen> {
   LocaleController get l => LocaleController.instance;
 
-  final TextEditingController _stage1NotesController = TextEditingController(
-    text:
-        'Bản thảo Stage 1 (30%): Đề xuất áo Blazer Oversized Đen nhám khoác ngoài Corset Lụa Bạc tạo đường eo thon gọn, kết hợp quần suông cạp cao kéo dài chân. Phù hợp sự kiện Tech Fashion Show.',
-  );
+  final TextEditingController _stage1NotesController = TextEditingController();
+  String? _lastLoadedBrief;
+  final bool _isOrderAccepted = true;
 
-  bool _isOrderAccepted = true;
+  Map<String, String> _resolveContextualSuggestions(String brief) {
+    final lower = brief.toLowerCase();
+    final isEn = l.isEnglish;
+
+    if (lower.contains('biển') ||
+        lower.contains('beach') ||
+        lower.contains('mùa hè') ||
+        lower.contains('summer') ||
+        lower.contains('resort') ||
+        lower.contains('nghỉ dưỡng')) {
+      return {
+        'upperTag': isEn ? 'Upper' : 'Áo khoác/Thân trên',
+        'upperText': isEn
+            ? 'Breathable oversized linen shirt in cream white or oceanic pastel.'
+            : 'Sơ mi Linen form rộng thoáng mát màu trắng kem hoặc xanh biển pastel.',
+        'innerTag': isEn ? 'Inner/Acc' : 'Lớp trong/Phụ kiện',
+        'innerText': isEn
+            ? 'High-waisted tailored shorts paired with UV sunglasses and straw sun hat.'
+            : 'Quần short cạp cao kết hợp kính râm và mũ cói rộng vành.',
+        'poseTag': isEn ? 'Pose' : 'Tạo dáng',
+        'poseText': isEn
+            ? 'Natural shoulder-lean breeze pose with hand in hair to accentuate natural posture.'
+            : 'Dáng nghiêng vai tự nhiên đón nắng giúp tôn dáng thanh thoát.',
+        'defaultDraft': isEn
+            ? 'Stage 1 Draft (30%): Summer beach vacation moodboard featuring breathable oversized linen shirt, high-waisted shorts, straw hat, and polarized sunglasses.'
+            : 'Bản thảo Chặng 1 (30%): Concept Nghỉ dưỡng Đi biển mùa hè với Sơ mi Linen form rộng thoáng mát khoác ngoài, kết hợp quần short cạp cao, kính râm và mũ cói rộng vành.',
+      };
+    }
+
+    if (lower.contains('tiệc') ||
+        lower.contains('party') ||
+        lower.contains('gala') ||
+        lower.contains('prom') ||
+        lower.contains('dạ hội') ||
+        lower.contains('sang trọng')) {
+      return {
+        'upperTag': isEn ? 'Upper' : 'Áo khoác/Thân trên',
+        'upperText': isEn
+            ? 'Tailored satin waist-cinching blazer or minimalist evening dress.'
+            : 'Áo Blazer chiết eo satin cao cấp hoặc đầm dạ tiệc tối giản tôn đường cong.',
+        'innerTag': isEn ? 'Inner/Acc' : 'Lớp trong/Phụ kiện',
+        'innerText': isEn
+            ? 'Metallic accent jewelry, elegant evening clutch, and pointed stilettos.'
+            : 'Phụ kiện ánh kim metallic, clutch cầm tay và giày cao gót mũi nhọn.',
+        'poseTag': isEn ? 'Pose' : 'Tạo dáng',
+        'poseText': isEn
+            ? 'Upright 45-degree angle posture with hand on hip for refined elegance.'
+            : 'Đứng thẳng chân trước chân sau góc 45°, tay đặt hông tạo cảm giác sang trọng, quý phái.',
+        'defaultDraft': isEn
+            ? 'Stage 1 Draft (30%): High-glam evening party concept featuring premium satin tailoring and metallic accents for nighttime spotlight.'
+            : 'Bản thảo Chặng 1 (30%): Concept Sang Trọng & Dạ Tiệc, điểm nhấn vải lụa satin cao cấp phối cùng phụ kiện ánh kim, tạo visual thanh lịch và nổi bật ánh đèn đêm.',
+      };
+    }
+
+    if (lower.contains('công sở') ||
+        lower.contains('office') ||
+        lower.contains('work') ||
+        lower.contains('đi làm') ||
+        lower.contains('formal')) {
+      return {
+        'upperTag': isEn ? 'Upper' : 'Áo khoác/Thân trên',
+        'upperText': isEn
+            ? 'Relaxed unstructured blazer paired with silk V-neck blouse.'
+            : 'Áo Blazer phom suông mềm kết hợp sơ mi lụa cổ V thanh lịch.',
+        'innerTag': isEn ? 'Inner/Acc' : 'Lớp trong/Phụ kiện',
+        'innerText': isEn
+            ? 'High-rise straight trousers and a minimalist leather tote.'
+            : 'Quần âu ống đứng cạp cao hoặc chân váy midi cùng túi tote da tối giản.',
+        'poseTag': isEn ? 'Pose' : 'Tạo dáng',
+        'poseText': isEn
+            ? 'Confident subtle cross-leg stance with briefcase or tablet in hand.'
+            : 'Đứng tự tin bắt chéo chân nhẹ, một tay cầm tài liệu hoặc túi xách toát lên phong thái chuyên nghiệp.',
+        'defaultDraft': isEn
+            ? 'Stage 1 Draft (30%): Modern office smart-casual concept with relaxed blazer and high-waisted trousers.'
+            : 'Bản thảo Chặng 1 (30%): Concept Smart Casual Công Sở hiện đại, tối ưu form dáng chỉn chu thoải mái với Blazer suông nhẹ và quần âu cạp cao tôn dáng.',
+      };
+    }
+
+    // Default: Streetwear / Cyberpunk / Tech Fashion
+    return {
+      'upperTag': isEn ? 'Upper' : 'Áo khoác/Thân trên',
+      'upperText': isEn
+          ? 'Matte charcoal oversized blazer to soften square shoulders.'
+          : 'Áo Blazer Oversized Đen nhám giúp làm mềm bờ vai ngang.',
+      'innerTag': isEn ? 'Inner/Acc' : 'Lớp trong/Phụ kiện',
+      'innerText': isEn
+          ? 'Silver metallic corset/crop top creating a focused focal point at the waist.'
+          : 'Corset Metallic Bạc tạo điểm nhấn thị giác vào vùng eo.',
+      'poseTag': isEn ? 'Pose' : 'Tạo dáng',
+      'poseText': isEn
+          ? '"Low-Angle Power Lean" shot from a 15-degree low angle to elongate legs.'
+          : 'Dáng "Low-Angle Power Lean" chụp từ góc thấp 15° giúp kéo dài chân.',
+      'defaultDraft': isEn
+          ? 'Stage 1 Draft (30%): Proposed matte black oversized blazer over silver corset, combined with wide-leg high-waisted pants for urban editorial.'
+          : 'Bản thảo Chặng 1 (30%): Đề xuất áo Blazer Oversized Đen nhám khoác ngoài Corset Lụa Bạc tạo đường eo thon gọn, kết hợp quần suông cạp cao kéo dài chân. Phù hợp sự kiện Tech Fashion Show.',
+    };
+  }
 
   @override
   void initState() {
@@ -208,7 +303,7 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
                       const SizedBox(height: 16),
 
                       // --- 3. Gemini Co-pilot Stylist Assistant ---
-                      _buildGeminiCopilotCard(),
+                      _buildGeminiCopilotCard(briefText: briefText),
                       const SizedBox(height: 16),
 
                       // --- 4. Stage 1 (30%) Deliverable Submission Form ---
@@ -613,7 +708,15 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
     );
   }
 
-  Widget _buildGeminiCopilotCard() {
+  Widget _buildGeminiCopilotCard({required String briefText}) {
+    final advice = _resolveContextualSuggestions(briefText);
+
+    // Auto-update default draft notes if not yet modified or order brief changed
+    if (_lastLoadedBrief != briefText) {
+      _lastLoadedBrief = briefText;
+      _stage1NotesController.text = advice['defaultDraft'] ?? '';
+    }
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -670,7 +773,7 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  '96% Fit Match',
+                  l.isEnglish ? '96% Fit Match' : 'Độ hợp: 96%',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
@@ -682,9 +785,9 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            '• Gợi ý 1 (Upper): Áo Blazer Oversized Đen nhám giúp làm mềm bờ vai ngang.\n'
-            '• Gợi ý 2 (Inner): Corset Metallic Bạc tạo điểm nhấn thị giác vào vòng eo.\n'
-            '• Gợi ý 3 (Pose): Dáng "Low-Angle Power Lean" chụp từ góc thấp 15° giúp kéo dài chân.',
+            '• ${l.isEnglish ? 'Tip 1' : 'Gợi ý 1'} (${advice['upperTag']}): ${advice['upperText']}\n'
+            '• ${l.isEnglish ? 'Tip 2' : 'Gợi ý 2'} (${advice['innerTag']}): ${advice['innerText']}\n'
+            '• ${l.isEnglish ? 'Tip 3' : 'Gợi ý 3'} (${advice['poseTag']}): ${advice['poseText']}',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               height: 1.5,

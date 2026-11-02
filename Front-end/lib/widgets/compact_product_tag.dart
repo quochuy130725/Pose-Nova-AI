@@ -20,11 +20,7 @@ class CompactProductTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String displayPrice = priceText;
-    if (priceText.contains('1.250.000')) {
-      displayPrice = '1.250K';
-    } else if (priceText.contains('2.500.000')) {
-      displayPrice = '2.500K';
-    }
+    
 
     return GestureDetector(
       onTap: onTap ??

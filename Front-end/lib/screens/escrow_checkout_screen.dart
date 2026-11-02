@@ -97,24 +97,27 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEn = AppLanguageController.instance.isEnglish;
+    final cleanOrderCode = StylingRequestProvider.instance.activeOrderCode.replaceAll('#', '').trim();
+
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          'Escrow Checkout',
+          isEn ? 'Escrow Checkout' : 'Thanh Toán Ký Quỹ',
           style: GoogleFonts.plusJakartaSans(
             fontSize: 18,
             fontWeight: FontWeight.w800,
             color: AppColors.petrol,
           ),
         ),
-        actions: const [
+        actions: [
           Padding(
-            padding: EdgeInsets.only(right: 16.0),
+            padding: const EdgeInsets.only(right: 16.0),
             child: BrutalistBadge(
-              label: '100% Escrow',
+              label: isEn ? '100% Escrow' : 'Bảo Vệ Ký Quỹ 100%',
               backgroundColor: AppColors.warmAmber,
               isMonospace: false,
             ),
@@ -158,7 +161,7 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              '100% SePay Escrow Protection',
+                              isEn ? '100% SePay Escrow Protection' : 'Bảo Vệ Ký Quỹ 100% SePay',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.plusJakartaSans(
@@ -178,7 +181,7 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
                       child: Column(
                         children: [
                           Text(
-                            'Tổng Tiền Ký Quỹ Đóng Băng',
+                            isEn ? 'Total Frozen Escrow Deposit' : 'Tổng Tiền Ký Quỹ Đóng Băng',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -205,7 +208,7 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
                               border: Border.all(color: AppColors.hairlineBorder, width: 1.0),
                             ),
                             child: Text(
-                              'TXN-SEPAY-8452-DEP',
+                              'TXN-SEPAY-$cleanOrderCode-DEP',
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,

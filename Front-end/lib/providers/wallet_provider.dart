@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../core/localization/app_strings.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
 
@@ -103,20 +104,24 @@ class WalletProvider extends ChangeNotifier {
     int locked = 0;
     final List<LedgerEntry> entries = [];
 
+    final isEn = LocaleController.instance.isEnglish;
     final stageMeta = <int, Map<String, String>>{
       1: {
         'pct': '30%',
         'label': 'Stage 01',
+        'viLabel': 'Chặng 01',
         'desc': 'Moodboard & Concept',
       },
       2: {
         'pct': '30%',
         'label': 'Stage 02',
+        'viLabel': 'Chặng 02',
         'desc': 'Outfit Selection & Pose',
       },
       3: {
         'pct': '40%',
         'label': 'Stage 03',
+        'viLabel': 'Chặng 03',
         'desc': 'Final Lookbook & Pose',
       },
     };
@@ -133,10 +138,15 @@ class WalletProvider extends ChangeNotifier {
         entries.add(
           LedgerEntry(
             amountText: '+${CurrencyFormatter.formatVnd(net)}',
-            title: 'Milestone Release (${meta['pct']} ${meta['label']} · $cleanCode)',
-            subtitle:
-                'Nghiệm thu: ${meta['desc']} • Phí sàn -${CurrencyFormatter.formatVnd(fee)}',
-            timestamp: stageOrder == 1 ? 'Đã giải ngân ${meta['label']}' : 'Vừa xong',
+            title: isEn
+                ? 'Milestone Release (${meta['pct']} ${meta['label']} · $cleanCode)'
+                : 'Giải Ngân Chặng (${meta['pct']} ${meta['viLabel']} · $cleanCode)',
+            subtitle: isEn
+                ? 'Deliverable: ${meta['desc']} • Platform Fee -${CurrencyFormatter.formatVnd(fee)}'
+                : 'Nghiệm thu: ${meta['desc']} • Phí sàn -${CurrencyFormatter.formatVnd(fee)}',
+            timestamp: stageOrder == 1
+                ? (isEn ? 'Released ${meta['label']}' : 'Đã giải ngân ${meta['viLabel']}')
+                : (isEn ? 'Just now' : 'Vừa xong'),
             isCredit: true,
           ),
         );
@@ -149,9 +159,13 @@ class WalletProvider extends ChangeNotifier {
     entries.add(
       LedgerEntry(
         amountText: '+${CurrencyFormatter.formatVnd(totalBudget)}',
-        title: 'Escrow Deposit ($cleanCode)',
-        subtitle: 'SePay VietQR 100% Escrow Inflow • Đóng băng quỹ trung gian',
-        timestamp: 'Đã ký quỹ 100%',
+        title: isEn
+            ? 'Escrow Deposit ($cleanCode)'
+            : 'Nạp Cọc Ký Quỹ ($cleanCode)',
+        subtitle: isEn
+            ? 'SePay VietQR 100% Escrow Inflow • Frozen intermediary escrow fund'
+            : 'SePay VietQR 100% Escrow Inflow • Đóng băng quỹ trung gian',
+        timestamp: isEn ? '100% Escrow Funded' : 'Đã ký quỹ 100%',
         isCredit: false,
       ),
     );

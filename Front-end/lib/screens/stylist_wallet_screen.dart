@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../core/localization/app_strings.dart';
 import '../core/theme/app_colors.dart';
+import '../providers/styling_request_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../widgets/brutalist_badge.dart';
 import '../widgets/cyber_black_card.dart';
@@ -35,6 +37,8 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
       builder: (context, _) {
         final walletProvider = WalletProvider.instance;
         final embeddedInShell = widget.embeddedInShell;
+        final isEn = LocaleController.instance.isEnglish;
+        final cleanCode = StylingRequestProvider.instance.activeOrderCode.replaceAll('#', '').replaceAll('REQ-', '');
 
         return Scaffold(
           backgroundColor: AppColors.canvas,
@@ -44,18 +48,18 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
                   backgroundColor: Colors.transparent,
                   elevation: 0,
                   title: Text(
-                    'Stylist Wallet',
+                    isEn ? 'Stylist Wallet' : 'Ví Stylist',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: AppColors.petrol,
                     ),
                   ),
-                  actions: const [
+                  actions: [
                     Padding(
-                      padding: EdgeInsets.only(right: 16.0),
+                      padding: const EdgeInsets.only(right: 16.0),
                       child: BrutalistBadge(
-                        label: 'Ledger Audited',
+                        label: isEn ? 'Ledger Audited' : 'Đã Đối Soát',
                         backgroundColor: AppColors.warmAmber,
                         isMonospace: false,
                       ),
@@ -70,7 +74,7 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
                 CyberBlackCard(
                   balanceVnd: walletProvider.availableBalanceVnd,
                   escrowLockedVnd: walletProvider.escrowLockedVnd,
-                  walletId: 'WAL-STY-8452',
+                  walletId: 'WAL-STY-$cleanCode',
                   onWithdraw: () async {
                     final success = await walletProvider.withdrawAll();
                     if (!context.mounted) return;
@@ -79,8 +83,10 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
                         backgroundColor: AppColors.ink,
                         content: Text(
                           success
-                              ? 'Đã rút toàn bộ số dư khả dụng về tài khoản ngân hàng liên kết (MBBank • 0829100286)!'
-                              : 'Số dư khả dụng hiện tại là 0₫.',
+                              ? (isEn
+                                  ? 'Withdrawn all available balance to linked bank account (MBBank • 0829100286)!'
+                                  : 'Đã rút toàn bộ số dư khả dụng về tài khoản ngân hàng liên kết (MBBank • 0829100286)!')
+                              : (isEn ? 'Current available balance is 0₫.' : 'Số dư khả dụng hiện tại là 0₫.'),
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -101,7 +107,7 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
-                              'Escrow Reconciliation Ledger',
+                              isEn ? 'Escrow Reconciliation Ledger' : 'Sổ Cái Đối Soát Ký Quỹ',
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w800,
@@ -115,7 +121,7 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Fee: 15%',
+                      isEn ? 'Fee: 15%' : 'Phí sàn: 15%',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -257,7 +263,9 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
                     ),
                     const SizedBox(width: 8),
                     BrutalistBadge(
-                      label: isDepositInflow ? 'Locked' : 'Released',
+                      label: isDepositInflow
+                          ? (LocaleController.instance.isEnglish ? 'Locked' : 'Đang giữ')
+                          : (LocaleController.instance.isEnglish ? 'Released' : 'Đã giải ngân'),
                       backgroundColor: isDepositInflow ? AppColors.warmAmber : AppColors.porcelainSmoke,
                       textColor: AppColors.petrol,
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

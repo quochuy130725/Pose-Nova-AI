@@ -726,7 +726,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
                 ),
               ),
               Text(
-                'ESCROW PROTECTED',
+                AppLanguageController.instance.isEnglish ? 'ESCROW PROTECTED' : 'BẢO VỆ KÝ QUỸ',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w800,
