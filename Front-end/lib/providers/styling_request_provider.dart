@@ -55,6 +55,7 @@ class StylingRequestProvider extends ChangeNotifier {
 
   void restoreStageStatuses(Map<int, String> statuses) {
     _stageStatuses = Map<int, String>.from(statuses);
+    _syncWalletWithActiveOrder(notify: false);
     notifyListeners();
   }
 
@@ -627,6 +628,14 @@ class StylingRequestProvider extends ChangeNotifier {
   }) async {
     _isLoading = true;
     notifyListeners();
+
+    await EscrowStateController.instance.saveStageDeliverable(
+      stageOrder: stageNumber,
+      imageUrl: deliverableImageUrl,
+      notes: stylistNotes,
+      affiliateUrl: affiliateUrl,
+    );
+
     try {
       final milestones = _activeRequest?['milestones'];
       String? milestoneId;

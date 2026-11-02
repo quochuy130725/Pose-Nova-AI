@@ -5,14 +5,15 @@ import '../providers/styling_request_provider.dart';
 import '../providers/wallet_provider.dart';
 
 /// Global State Controller for Escrow Workspace & Active Styling Orders
-/// Ensures active orders and milestone stage progression are never lost
-/// across screens, navigation tabs, or app restarts.
+/// Ensures active orders, deliverable submissions, and milestone stage progression
+/// are never lost across screens, navigation tabs, or app restarts.
 class EscrowStateController extends ChangeNotifier {
   EscrowStateController._();
   static final EscrowStateController instance = EscrowStateController._();
 
   static const String _storageKeyOrder = 'posenova_active_escrow_order_v2';
   static const String _storageKeyStages = 'posenova_escrow_stages_v2';
+  static const String _storageKeyDeliverables = 'posenova_stage_deliverables_v2';
 
   Map<String, dynamic>? _cachedOrder;
   Map<int, String> _cachedStageStatuses = {
@@ -20,6 +21,7 @@ class EscrowStateController extends ChangeNotifier {
     2: 'LOCKED',
     3: 'LOCKED',
   };
+  final Map<int, Map<String, dynamic>> _stageDeliverables = {};
   bool _isInitialized = false;
 
   bool get isInitialized => _isInitialized;
@@ -50,6 +52,29 @@ class EscrowStateController extends ChangeNotifier {
       StylingRequestProvider.instance.stageStatus(stageOrder);
 
   bool isStageApproved(int stageOrder) => stageStatus(stageOrder) == 'APPROVED';
+  bool isStageInReview(int stageOrder) => stageStatus(stageOrder) == 'IN_REVIEW';
+  bool isStageActive(int stageOrder) => stageStatus(stageOrder) == 'ACTIVE';
+  bool isStageLocked(int stageOrder) => stageStatus(stageOrder) == 'LOCKED';
+
+  Map<int, Map<String, dynamic>> get stageDeliverables =>
+      Map.unmodifiable(_stageDeliverables);
+
+  Map<String, dynamic>? stageDeliverable(int stageOrder) =>
+      _stageDeliverables[stageOrder];
+
+  String? stageDeliverableImageUrl(int stageOrder) =>
+      _stageDeliverables[stageOrder]?['imageUrl']?.toString();
+
+  String? stageDeliverableNotes(int stageOrder) =>
+      _stageDeliverables[stageOrder]?['notes']?.toString();
+
+  String? stageDeliverableAffiliate(int stageOrder) =>
+      _stageDeliverables[stageOrder]?['affiliateUrl']?.toString();
+
+  bool hasStageDeliverable(int stageOrder) {
+    final url = stageDeliverableImageUrl(stageOrder);
+    return url != null && url.isNotEmpty;
+  }
 
   /// Initializes controller from persistent storage (SharedPreferences)
   Future<void> init() async {
@@ -66,6 +91,7 @@ class EscrowStateController extends ChangeNotifier {
           if (code.contains('8452') || budget == 2500000) {
             await prefs.remove(_storageKeyOrder);
             await prefs.remove(_storageKeyStages);
+            await prefs.remove(_storageKeyDeliverables);
             _cachedOrder = null;
           } else {
             _cachedOrder = decoded;
@@ -91,11 +117,36 @@ class EscrowStateController extends ChangeNotifier {
           }
         }
       }
+
+      final deliverablesJson = prefs.getString(_storageKeyDeliverables);
+      if (deliverablesJson != null && deliverablesJson.isNotEmpty) {
+        final decodedDelivs = jsonDecode(deliverablesJson);
+        if (decodedDelivs is Map) {
+          decodedDelivs.forEach((k, v) {
+            final order = int.tryParse(k.toString());
+            if (order != null && v is Map) {
+              _stageDeliverables[order] = Map<String, dynamic>.from(v);
+            }
+          });
+        }
+      }
     } catch (e) {
       debugPrint('Error restoring EscrowStateController: $e');
     } finally {
       _isInitialized = true;
+      _syncWallet();
       notifyListeners();
+    }
+  }
+
+  void _syncWallet() {
+    if (hasActiveOrder) {
+      WalletProvider.instance.syncOrderEscrowState(
+        orderCode: activeOrderCode,
+        totalBudget: activeTotalBudget,
+        stageStatuses: _cachedStageStatuses,
+        notify: true,
+      );
     }
   }
 
@@ -103,6 +154,7 @@ class EscrowStateController extends ChangeNotifier {
   Future<void> saveActiveOrder(Map<String, dynamic> order) async {
     _cachedOrder = Map<String, dynamic>.from(order);
     StylingRequestProvider.instance.restoreActiveRequest(_cachedOrder!);
+    _syncWallet();
     notifyListeners();
 
     try {
@@ -113,18 +165,54 @@ class EscrowStateController extends ChangeNotifier {
     }
   }
 
+  /// Saves a deliverable submitted by Stylist for a specific stage
+  Future<void> saveStageDeliverable({
+    required int stageOrder,
+    required String imageUrl,
+    String? notes,
+    String? affiliateUrl,
+  }) async {
+    _stageDeliverables[stageOrder] = {
+      'imageUrl': imageUrl,
+      if (notes != null) 'notes': notes,
+      if (affiliateUrl != null) 'affiliateUrl': affiliateUrl,
+      'submittedAt': DateTime.now().toIso8601String(),
+    };
+    await updateStageStatus(stageOrder, 'IN_REVIEW');
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final stringMap =
+          _stageDeliverables.map((k, v) => MapEntry(k.toString(), v));
+      await prefs.setString(_storageKeyDeliverables, jsonEncode(stringMap));
+    } catch (e) {
+      debugPrint('Error saving deliverables: $e');
+    }
+  }
+
   /// Updates a milestone stage status (e.g. 'APPROVED', 'IN_REVIEW', 'ACTIVE', 'LOCKED')
   Future<void> updateStageStatus(int stageOrder, String status) async {
+    _cachedStageStatuses = Map<int, String>.from(_cachedStageStatuses);
     _cachedStageStatuses[stageOrder] = status;
     StylingRequestProvider.instance.setStageStatus(stageOrder, status);
+    _syncWallet();
     notifyListeners();
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final stringMap = _cachedStageStatuses.map((k, v) => MapEntry(k.toString(), v));
+      final stringMap =
+          _cachedStageStatuses.map((k, v) => MapEntry(k.toString(), v));
       await prefs.setString(_storageKeyStages, jsonEncode(stringMap));
     } catch (e) {
       debugPrint('Error saving stage statuses: $e');
+    }
+  }
+
+  /// Approves a milestone and unlocks the subsequent milestone
+  Future<void> approveMilestone(int stageOrder) async {
+    await updateStageStatus(stageOrder, 'APPROVED');
+    if (stageOrder < 3 && stageStatus(stageOrder + 1) == 'LOCKED') {
+      await updateStageStatus(stageOrder + 1, 'ACTIVE');
     }
   }
 
@@ -136,6 +224,7 @@ class EscrowStateController extends ChangeNotifier {
       2: 'LOCKED',
       3: 'LOCKED',
     };
+    _stageDeliverables.clear();
     StylingRequestProvider.instance.clearActiveRequest();
     WalletProvider.instance.clearActiveOrderState(notify: true);
     notifyListeners();
@@ -144,6 +233,7 @@ class EscrowStateController extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_storageKeyOrder);
       await prefs.remove(_storageKeyStages);
+      await prefs.remove(_storageKeyDeliverables);
     } catch (e) {
       debugPrint('Error clearing active order: $e');
     }

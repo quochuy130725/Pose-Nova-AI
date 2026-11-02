@@ -33,7 +33,7 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
   String? _lastLoadedBrief;
   final bool _isOrderAccepted = true;
 
-  Map<String, String> _resolveContextualSuggestions(String brief) {
+  Map<String, String> _resolveContextualSuggestions(String brief, {String? vibe, List<String>? palette}) {
     final lower = brief.toLowerCase();
     final isEn = l.isEnglish;
 
@@ -323,7 +323,7 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
                         const SizedBox(height: 16),
 
                         // --- 3. Gemini Co-pilot Stylist Assistant ---
-                        _buildGeminiCopilotCard(briefText: briefText),
+                        _buildGeminiCopilotCard(briefText: briefText, vibeText: vibeText, paletteHex: paletteHex),
                         const SizedBox(height: 16),
 
                         // --- 4. Stage 1 (30%) Deliverable Submission Form ---
@@ -818,8 +818,12 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
     );
   }
 
-  Widget _buildGeminiCopilotCard({required String briefText}) {
-    final advice = _resolveContextualSuggestions(briefText);
+  Widget _buildGeminiCopilotCard({
+    required String briefText,
+    String? vibeText,
+    List<String>? paletteHex,
+  }) {
+    final advice = _resolveContextualSuggestions(briefText, vibe: vibeText, palette: paletteHex);
 
     // Auto-update default draft notes if not yet modified or order brief changed
     if (_lastLoadedBrief != briefText) {

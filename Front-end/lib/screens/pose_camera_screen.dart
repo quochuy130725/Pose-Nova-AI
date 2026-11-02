@@ -131,8 +131,11 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
       );
 
       CameraController? controller;
+      CameraController? candidate;
+
+      // Bước 1: Thử khởi tạo với ResolutionPreset.medium
       try {
-        final med = CameraController(
+        candidate = CameraController(
           description,
           ResolutionPreset.medium,
           enableAudio: false,
@@ -140,17 +143,49 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
               ? ImageFormatGroup.nv21
               : (_isIOS ? ImageFormatGroup.bgra8888 : null),
         );
-        await med.initialize();
-        controller = med;
+        await candidate.initialize();
+        controller = candidate;
       } catch (firstErr) {
-        debugPrint('[PoseCamera] Medium init failed ($firstErr). Retrying with low preset fallback...');
-        final low = CameraController(
-          description,
-          ResolutionPreset.low,
-          enableAudio: false,
-        );
-        await low.initialize();
-        controller = low;
+        debugPrint('[PoseCamera] Medium init failed ($firstErr). Releasing surfaces and retrying with low preset...');
+        if (candidate != null) {
+          try {
+            await candidate.dispose();
+          } catch (_) {}
+          candidate = null;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 220));
+
+        // Bước 2: Thử tiếp với ResolutionPreset.low
+        try {
+          candidate = CameraController(
+            description,
+            ResolutionPreset.low,
+            enableAudio: false,
+            imageFormatGroup: _isAndroid
+                ? ImageFormatGroup.nv21
+                : (_isIOS ? ImageFormatGroup.bgra8888 : null),
+          );
+          await candidate.initialize();
+          controller = candidate;
+        } catch (secondErr) {
+          debugPrint('[PoseCamera] Low init with NV21 failed ($secondErr). Releasing and trying standard low fallback...');
+          if (candidate != null) {
+            try {
+              await candidate.dispose();
+            } catch (_) {}
+            candidate = null;
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 220));
+
+          // Bước 3: Dự phòng cuối cùng - low không kèm imageFormatGroup tùy chỉnh
+          final fallback = CameraController(
+            description,
+            ResolutionPreset.low,
+            enableAudio: false,
+          );
+          await fallback.initialize();
+          controller = fallback;
+        }
       }
 
       if (!mounted) {
@@ -163,6 +198,7 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
       await _startStream();
     } on CameraException catch (e) {
       if (!mounted) return;
+      debugPrint('[PoseCamera] CameraException: $e');
       final isEn = LocaleController.instance.isEnglish;
       setState(() {
         _cameraError = e.code.toLowerCase().contains('denied')
@@ -175,9 +211,10 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
       });
     } catch (e) {
       if (!mounted) return;
+      debugPrint('[PoseCamera] General camera init error: $e');
       final isEn = LocaleController.instance.isEnglish;
       setState(() => _cameraError = isEn
-          ? 'Unable to open camera ($e). Please tap Retry.'
+          ? 'Unable to open camera. Please tap Retry.'
           : 'Không thể mở camera. Vui lòng bấm Thử lại.');
     } finally {
       _isCameraInitializing = false;
@@ -209,6 +246,8 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
     try {
       await controller.dispose();
     } catch (_) {}
+    // Chờ 200ms để CameraX / Camera2 hardware hủy liên kết hoàn toàn các Surface cũ
+    await Future<void>.delayed(const Duration(milliseconds: 200));
   }
 
   Future<void> _switchCamera() async {
@@ -891,29 +930,32 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
     if (_cameraError != null) {
       return Scaffold(
         backgroundColor: Colors.black,
-        body: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline, color: AppColors.rosePink, size: 48),
-                const SizedBox(height: 16),
-                Text(
-                  _cameraError!,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 14),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () => _initCamera(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.sunshineYellow,
-                    foregroundColor: AppColors.ink,
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, color: AppColors.rosePink, size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    _cameraError!,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 14, height: 1.4),
                   ),
-                  child: Text(isEn ? 'Retry' : 'Thử lại'),
-                ),
-              ],
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () => _initCamera(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.sunshineYellow,
+                      foregroundColor: AppColors.ink,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                    ),
+                    child: Text(isEn ? 'Retry' : 'Thử lại'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

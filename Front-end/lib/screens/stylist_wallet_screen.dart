@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../controllers/escrow_state_controller.dart';
 import '../core/localization/app_strings.dart';
 import '../core/theme/app_colors.dart';
 import '../providers/styling_request_provider.dart';
@@ -33,9 +34,28 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: WalletProvider.instance,
+      listenable: Listenable.merge([
+        WalletProvider.instance,
+        StylingRequestProvider.instance,
+        EscrowStateController.instance,
+        LocaleController.instance,
+      ]),
       builder: (context, _) {
         final walletProvider = WalletProvider.instance;
+        final escrowCtrl = EscrowStateController.instance;
+
+        // Ensure wallet escrow balances are mathematically synchronized with active order
+        if (escrowCtrl.hasActiveOrder &&
+            walletProvider.escrowLockedVnd == 0 &&
+            walletProvider.availableBalanceVnd == 0) {
+          walletProvider.syncOrderEscrowState(
+            orderCode: escrowCtrl.activeOrderCode,
+            totalBudget: escrowCtrl.activeTotalBudget,
+            stageStatuses: escrowCtrl.stageStatuses,
+            notify: false,
+          );
+        }
+
         final embeddedInShell = widget.embeddedInShell;
         final isEn = LocaleController.instance.isEnglish;
         final cleanCode = StylingRequestProvider.instance.activeOrderCode.replaceAll('#', '').replaceAll('REQ-', '');
@@ -149,7 +169,9 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
                   )
                 else
                   ...walletProvider.ledger.map((entry) {
-                    final bool isDeposit = entry.title.contains('Escrow Deposit');
+                    final bool isDeposit = !entry.isCredit ||
+                        entry.title.contains('Escrow Deposit') ||
+                        entry.title.contains('Nạp Cọc Ký Quỹ');
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10.0),
                       child: _buildLedgerItem(
@@ -264,10 +286,14 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
                     const SizedBox(width: 8),
                     BrutalistBadge(
                       label: isDepositInflow
-                          ? (LocaleController.instance.isEnglish ? 'Locked' : 'Đang giữ')
+                          ? (LocaleController.instance.isEnglish ? 'Escrow Frozen' : 'Đang đóng băng')
                           : (LocaleController.instance.isEnglish ? 'Released' : 'Đã giải ngân'),
-                      backgroundColor: isDepositInflow ? AppColors.warmAmber : AppColors.porcelainSmoke,
-                      textColor: AppColors.petrol,
+                      backgroundColor: isDepositInflow
+                          ? const Color(0xFFFEF3C7)
+                          : const Color(0xFFDCFCE7),
+                      textColor: isDepositInflow
+                          ? const Color(0xFFB45309)
+                          : const Color(0xFF15803D),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       isMonospace: false,
                     ),

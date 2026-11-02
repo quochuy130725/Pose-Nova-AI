@@ -91,14 +91,21 @@ class _StylistMainShellState extends State<StylistMainShell> {
                       borderRadius: BorderRadius.circular(999),
                       boxShadow: AppColors.chipShadow,
                     ),
-                    child: Text(
-                      'Client',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.1,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          t.isVi ? 'Vai trò: Stylist' : 'Role: Stylist',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10.5,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.1,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.swap_horiz, size: 13, color: Colors.white),
+                      ],
                     ),
                   ),
                 ),
