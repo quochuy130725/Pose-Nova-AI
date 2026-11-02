@@ -21,23 +21,17 @@ class LedgerEntry {
 
 class WalletProvider extends ChangeNotifier {
   WalletProvider._() {
-    syncOrderEscrowState(
-      orderCode: '#REQ-8452',
-      totalBudget: 10000,
-      stageStatuses: const {1: 'ACTIVE', 2: 'LOCKED', 3: 'LOCKED'},
-      notify: false,
-    );
+    _availableBalanceVnd = 0;
+    _escrowLockedVnd = 0;
+    _ledger = [];
   }
   static final WalletProvider instance = WalletProvider._();
 
   bool _isLoading = false;
   String? _errorMessage;
 
-  // Synchronized mathematical balances for the active order (default 10,000 VND)
-  // Stage 1 (30% = 3,000 gross -> 85% = 2,550 net, 15% = 450 fee) is Approved & Released.
-  // Remaining locked (70% = 7,000 gross -> 85% = 5,950 net).
   int _availableBalanceVnd = 0;
-  int _escrowLockedVnd = 8500;
+  int _escrowLockedVnd = 0;
   List<LedgerEntry> _ledger = [];
 
   bool get isLoading => _isLoading;
@@ -45,7 +39,14 @@ class WalletProvider extends ChangeNotifier {
   int get availableBalanceVnd => _availableBalanceVnd;
   int get escrowLockedVnd => _escrowLockedVnd;
   List<LedgerEntry> get ledger => List.unmodifiable(_ledger);
-  String get walletId => 'WAL-STY-8452';
+  String get walletId => 'WAL-STY-LIVE';
+
+  void clearActiveOrderState({bool notify = true}) {
+    _availableBalanceVnd = 0;
+    _escrowLockedVnd = 0;
+    _ledger = [];
+    if (notify) notifyListeners();
+  }
 
   Future<void> fetchMyWallet() => fetchWallet();
 

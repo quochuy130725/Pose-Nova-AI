@@ -11,3 +11,4 @@ let f2 = fs.readFileSync('Front-end/lib/screens/create_styling_request_screen.da
 f2 = f2.replace(/'Escrow Protected'/, "AppLanguageController.instance.isEnglish ? 'Escrow Protected' : 'Bảo Vệ Ký Quỹ'");
 fs.writeFileSync('Front-end/lib/screens/create_styling_request_screen.dart', f2);
 console.log('Updated create_styling_request_screen.dart');
+

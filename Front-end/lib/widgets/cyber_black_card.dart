@@ -18,7 +18,7 @@ class CyberBlackCard extends StatelessWidget {
     super.key,
     required this.balanceVnd,
     required this.escrowLockedVnd,
-    this.walletId = 'WAL-STY-8452',
+    this.walletId = 'WAL-STY-ACTIVE',
     this.onWithdraw,
   });
 

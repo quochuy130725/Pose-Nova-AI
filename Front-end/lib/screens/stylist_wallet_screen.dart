@@ -74,7 +74,7 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
                 CyberBlackCard(
                   balanceVnd: walletProvider.availableBalanceVnd,
                   escrowLockedVnd: walletProvider.escrowLockedVnd,
-                  walletId: 'WAL-STY-$cleanCode',
+                  walletId: cleanCode.isNotEmpty ? 'WAL-STY-$cleanCode' : 'WAL-STY-ACTIVE',
                   onWithdraw: () async {
                     final success = await walletProvider.withdrawAll();
                     if (!context.mounted) return;

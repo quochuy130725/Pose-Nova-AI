@@ -217,7 +217,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
         builder: (_) => const CreateStylingRequestScreen(
           lookbookTitle: 'Personal Custom Styling',
           stylistName: 'Maya Trần',
-          budgetVnd: 2500000,
+          budgetVnd: 10000,
         ),
       ),
     );

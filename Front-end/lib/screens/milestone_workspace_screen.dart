@@ -16,6 +16,7 @@ import '../widgets/brutalist_button.dart';
 import '../widgets/fashion_dock_button.dart';
 import '../widgets/technical_grid_background.dart';
 import 'client_main_shell.dart';
+import 'create_styling_request_screen.dart';
 import 'dispute_review_screen.dart';
 import 'stylist_wallet_screen.dart';
 
@@ -804,7 +805,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                   titleSpacing: 0,
                   title: Text(
                     widget.isStylistView
-                        ? 'Stylist Studio • #REQ-8452'
+                        ? (StylingRequestProvider.instance.hasActiveOrder
+                            ? 'Stylist Studio • ${StylingRequestProvider.instance.activeOrderCode}'
+                            : 'Stylist Studio')
                         : (t.isVi ? 'Theo Dõi Ký Quỹ' : 'Milestone Tracking'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -875,9 +878,11 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                t.isVi
-                                    ? 'Bảo vệ ${CurrencyFormatter.formatVnd(StylingRequestProvider.instance.activeTotalBudget)}'
-                                    : '${CurrencyFormatter.formatVnd(StylingRequestProvider.instance.activeTotalBudget)} Protected',
+                                StylingRequestProvider.instance.hasActiveOrder
+                                    ? (t.isVi
+                                        ? 'Bảo vệ ${CurrencyFormatter.formatVnd(StylingRequestProvider.instance.activeTotalBudget)}'
+                                        : '${CurrencyFormatter.formatVnd(StylingRequestProvider.instance.activeTotalBudget)} Protected')
+                                    : (t.isVi ? '0 ₫ Ký Quỹ' : '0 ₫ Escrow'),
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
@@ -897,14 +902,84 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                   const SizedBox(height: 18),
 
                   // --- 2. Milestone Contract Section with Integrated Deliverables ---
-                  _buildVerticalTimelineSection(t),
+                  if (!StylingRequestProvider.instance.hasActiveOrder)
+                    _buildEmptyWorkspaceState(t)
+                  else
+                    _buildVerticalTimelineSection(t),
                 ],
               ),
             ),
           ),
-          bottomNavigationBar: _buildStickyBottomActionBar(t),
+          bottomNavigationBar: StylingRequestProvider.instance.hasActiveOrder
+              ? _buildStickyBottomActionBar(t)
+              : null,
         );
       },
+    );
+  }
+
+  Widget _buildEmptyWorkspaceState(AppTranslations t) {
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.hairlineBorder, width: AppColors.cardBorderWidth),
+        boxShadow: AppColors.softDribbbleShadow,
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: const BoxDecoration(
+              color: AppColors.rosePinkSoft,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.verified_user_outlined,
+              size: 32,
+              color: AppColors.coralOrange,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            t.isVi ? 'Chưa Có Hợp Đồng Ký Quỹ' : 'No Active Escrow Contract',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: AppColors.ink,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            t.isVi
+                ? 'Bạn hiện chưa có đơn hàng ký quỹ nào đang diễn ra. Hãy tạo yêu cầu phối đồ mới để bắt đầu quy trình ký quỹ an toàn 3 chặng (30% - 30% - 40%)!'
+                : 'You currently have no active escrow contracts. Create a new styling request to start the protected 3-stage milestone escrow workflow (30% - 30% - 40%)!',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12.5,
+              color: AppColors.textMuted,
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 22),
+          BrutalistButton(
+            text: t.isVi ? 'TẠO YÊU CẦU PHỐI ĐỒ NGAY →' : 'CREATE STYLING REQUEST NOW →',
+            height: 48,
+            backgroundColor: AppColors.warmAmber,
+            textColor: AppColors.petrol,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CreateStylingRequestScreen()),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -1272,10 +1347,21 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
         ? 'Moodboard'
         : (_selectedStageIndex == 1 ? 'Outfit Curation' : 'Final Lookbook');
 
+    final briefText = StylingRequestProvider.instance.activeBriefText;
+    final styleKeyword = briefText.toLowerCase().contains('biển') || briefText.toLowerCase().contains('summer')
+        ? (t.isVi ? 'Summer Resort & Beachwear' : 'Summer Resort & Beachwear')
+        : briefText.toLowerCase().contains('tiệc') || briefText.toLowerCase().contains('gala')
+            ? (t.isVi ? 'Gala Night & Luxury Evening' : 'Gala Night & Luxury Evening')
+            : briefText.toLowerCase().contains('công sở') || briefText.toLowerCase().contains('office')
+                ? (t.isVi ? 'Smart Casual & Minimalist Office' : 'Smart Casual & Minimalist Office')
+                : (briefText.isNotEmpty
+                    ? (t.isVi ? 'phong cách theo yêu cầu của khách hàng' : 'client customized style concept')
+                    : (t.isVi ? 'Cyber-Streetwear & Modern Atelier' : 'Cyber-Streetwear & Modern Atelier'));
+
     final String descText = _selectedStageIndex == 0
         ? (t.isVi
-            ? 'Bản định hướng phong cách nghệ thuật, bảng màu và cảm hứng Cyber-Streetwear.'
-            : 'Artistic style guide, color palette, and Cyber-Streetwear inspiration.')
+            ? 'Bản định hướng phong cách nghệ thuật, bảng màu và cảm hứng $styleKeyword.'
+            : 'Artistic style guide, color palette, and $styleKeyword inspiration.')
         : (_selectedStageIndex == 1
             ? (t.isVi
                 ? 'Bộ phối trang phục hoàn chỉnh kèm thẻ sản phẩm thương mại điện tử giá tốt.'

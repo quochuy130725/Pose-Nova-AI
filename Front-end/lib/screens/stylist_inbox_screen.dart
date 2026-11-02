@@ -224,10 +224,16 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
                     Padding(
                       padding: const EdgeInsets.only(right: 14.0),
                       child: BrutalistBadge(
-                        label: activeCode,
-                        backgroundColor: AppColors.sunshineYellowLight,
-                        textColor: AppColors.ink,
-                        isMonospace: true,
+                        label: requestProvider.hasActiveOrder
+                            ? activeCode
+                            : (l.isEnglish ? 'ONLINE' : 'TRỰC TUYẾN'),
+                        backgroundColor: requestProvider.hasActiveOrder
+                            ? AppColors.sunshineYellowLight
+                            : const Color(0xFFECFDF5),
+                        textColor: requestProvider.hasActiveOrder
+                            ? AppColors.ink
+                            : const Color(0xFF059669),
+                        isMonospace: requestProvider.hasActiveOrder,
                       ),
                     ),
                   ],
@@ -273,50 +279,145 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
                               ),
                               const SizedBox(width: 8),
                               BrutalistBadge(
-                                label: activeCode,
-                                backgroundColor: AppColors.sunshineYellowLight,
-                                textColor: AppColors.ink,
-                                isMonospace: true,
+                                label: requestProvider.hasActiveOrder
+                                    ? activeCode
+                                    : (l.isEnglish ? 'ONLINE' : 'TRỰC TUYẾN'),
+                                backgroundColor: requestProvider.hasActiveOrder
+                                    ? AppColors.sunshineYellowLight
+                                    : const Color(0xFFECFDF5),
+                                textColor: requestProvider.hasActiveOrder
+                                    ? AppColors.ink
+                                    : const Color(0xFF059669),
+                                isMonospace: requestProvider.hasActiveOrder,
                               ),
                             ],
                           ),
                         ),
 
-                      // --- 1. Hero Incoming Order Summary Card ---
-                      _buildIncomingOrderHeroCard(
-                        orderCode: activeCode,
-                        totalBudget: totalBudget,
-                        netTotal: netTotal,
-                        feeTotal: feeTotal,
-                        stage1Net: stage1Net,
-                        stage2Net: stage2Net,
-                        stage3Net: stage3Net,
-                        vibeText: vibeText,
-                      ),
-                      const SizedBox(height: 16),
+                      if (!requestProvider.hasActiveOrder)
+                        _buildEmptyInboxState()
+                      else ...[
+                        // --- 1. Hero Incoming Order Summary Card ---
+                        _buildIncomingOrderHeroCard(
+                          orderCode: activeCode,
+                          totalBudget: totalBudget,
+                          netTotal: netTotal,
+                          feeTotal: feeTotal,
+                          stage1Net: stage1Net,
+                          stage2Net: stage2Net,
+                          stage3Net: stage3Net,
+                          vibeText: vibeText,
+                        ),
+                        const SizedBox(height: 16),
 
-                      // --- 2. Structured Client Brief & Body Metrics ---
-                      _buildClientBriefCard(
-                        briefText: briefText,
-                        paletteHex: paletteHex,
-                      ),
-                      const SizedBox(height: 16),
+                        // --- 2. Structured Client Brief & Body Metrics ---
+                        _buildClientBriefCard(
+                          briefText: briefText,
+                          paletteHex: paletteHex,
+                        ),
+                        const SizedBox(height: 16),
 
-                      // --- 3. Gemini Co-pilot Stylist Assistant ---
-                      _buildGeminiCopilotCard(briefText: briefText),
-                      const SizedBox(height: 16),
+                        // --- 3. Gemini Co-pilot Stylist Assistant ---
+                        _buildGeminiCopilotCard(briefText: briefText),
+                        const SizedBox(height: 16),
 
-                      // --- 4. Stage 1 (30%) Deliverable Submission Form ---
-                      _buildStage1SubmissionCard(stage1Net: stage1Net),
+                        // --- 4. Stage 1 (30%) Deliverable Submission Form ---
+                        _buildStage1SubmissionCard(stage1Net: stage1Net),
+                      ],
                     ],
                   ),
                 ),
-                _buildStickyOrderActions(stage1Net: stage1Net),
+                if (requestProvider.hasActiveOrder)
+                  _buildStickyOrderActions(stage1Net: stage1Net),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildEmptyInboxState() {
+    final isEn = l.isEnglish;
+    return Container(
+      margin: const EdgeInsets.only(top: 20),
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.hairlineBorder, width: AppColors.cardBorderWidth),
+        boxShadow: AppColors.softDribbbleShadow,
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: const BoxDecoration(
+              color: AppColors.rosePinkSoft,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.mark_email_read_outlined,
+              size: 32,
+              color: AppColors.coralOrange,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            isEn ? 'No Client Orders Yet' : 'Hộp Thư Đang Trống',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: AppColors.ink,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isEn
+                ? 'You currently do not have any incoming styling orders. When a client creates a brief and completes VietQR escrow deposit, the order details will automatically appear here!'
+                : 'Hiện tại chưa có khách hàng nào đặt yêu cầu phối đồ. Khi khách tạo đơn mới và nạp cọc ký quỹ VietQR, thông tin yêu cầu sẽ tự động xuất hiện tại đây!',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12.5,
+              color: AppColors.textMuted,
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            decoration: BoxDecoration(
+              color: const Color(0xFFECFDF5),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: const Color(0xFFA7F3D0)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF059669),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  isEn ? 'Stylist Studio is Active & Ready' : 'Stylist Studio Sẵn Sàng Nhận Đơn',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF059669),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

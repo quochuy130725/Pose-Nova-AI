@@ -54,20 +54,22 @@ class StylingRequestProvider extends ChangeNotifier {
       final data = response['data'];
       if (data is List && data.isNotEmpty) {
         _requests = data.whereType<Map<String, dynamic>>().toList();
-        if (_activeRequest == null) {
-          _activeRequest = _requests.first;
-          final rawCode = _activeRequest!['code']?.toString() ?? '#REQ-8452';
-          _activeRequest!['code'] = rawCode.startsWith('#') ? rawCode : '#$rawCode';
-          final detailResp = await ApiClient.instance.get(
-            '/styling-requests/${_activeRequest!['id']}',
-          );
-          if (detailResp['data'] is Map<String, dynamic>) {
-            _activeRequest = detailResp['data'] as Map<String, dynamic>;
-            final codeStr = _activeRequest!['code']?.toString() ?? '#REQ-8452';
-            _activeRequest!['code'] = codeStr.startsWith('#') ? codeStr : '#$codeStr';
-          }
-          _syncWalletWithActiveOrder(notify: false);
+        _activeRequest = _requests.first;
+        final rawCode = _activeRequest!['code']?.toString() ?? '';
+        _activeRequest!['code'] = rawCode.startsWith('#') ? rawCode : (rawCode.isEmpty ? '' : '#$rawCode');
+        final detailResp = await ApiClient.instance.get(
+          '/styling-requests/${_activeRequest!['id']}',
+        );
+        if (detailResp['data'] is Map<String, dynamic>) {
+          _activeRequest = detailResp['data'] as Map<String, dynamic>;
+          final codeStr = _activeRequest!['code']?.toString() ?? '';
+          _activeRequest!['code'] = codeStr.startsWith('#') ? codeStr : (codeStr.isEmpty ? '' : '#$codeStr');
         }
+        _syncWalletWithActiveOrder(notify: false);
+      } else {
+        _requests = [];
+        _activeRequest = null;
+        WalletProvider.instance.clearActiveOrderState(notify: false);
       }
     } catch (e) {
       _errorMessage = e.toString();
@@ -404,27 +406,31 @@ class StylingRequestProvider extends ChangeNotifier {
     }
   }
 
+  bool get hasActiveOrder => _activeRequest != null;
+
   String get activeOrderCode {
-    final raw = _activeRequest?['code']?.toString() ?? '#REQ-8452';
-    return raw.startsWith('#') ? raw : '#$raw';
+    if (!hasActiveOrder) return '';
+    final raw = _activeRequest?['code']?.toString() ?? '';
+    return raw.startsWith('#') ? raw : (raw.isEmpty ? '' : '#$raw');
   }
 
   String get activeRequestDisplayCode => activeOrderCode;
   String get activeRequestIdOrCode => activeOrderCode;
 
   int get activeTotalBudget {
+    if (!hasActiveOrder) return 0;
     final val = _activeRequest?['totalBudget'];
     if (val is num) return val.toInt();
-    if (val is String) return int.tryParse(val) ?? 10000;
-    return 10000;
+    if (val is String) return int.tryParse(val) ?? 0;
+    return 0;
   }
 
   void setCustomBudget(int newBudget) {
     final cleanBudget = newBudget < 1000 ? 1000 : newBudget;
     if (_activeRequest == null) {
       _activeRequest = {
-        'code': '#REQ-8452',
-        'title': 'Streetwear Editorial',
+        'code': '#REQ-NEW',
+        'title': 'Custom Styling Request',
         'totalBudget': cleanBudget,
         'status': 'IN_PROGRESS',
       };
@@ -456,9 +462,10 @@ class StylingRequestProvider extends ChangeNotifier {
       WalletProvider.stageFeeAmount(activeTotalBudget, stageOrder);
 
   String get activeBriefText {
+    if (!hasActiveOrder) return '';
     final text = _activeRequest?['briefText']?.toString();
     if (text != null && text.trim().isNotEmpty) return text;
-    return 'Cần phối bộ trang phục Streetwear tối giản đi sự kiện công nghệ, ưu tiên chất liệu thoáng mát và form rộng.';
+    return '';
   }
 
   String get activeVibe {

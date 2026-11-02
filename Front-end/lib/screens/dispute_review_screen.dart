@@ -370,7 +370,9 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
             children: [
               Expanded(
                 child: Text(
-                  'Dispute Case #DSP-8452-01',
+                  StylingRequestProvider.instance.hasActiveOrder
+                      ? 'Dispute Case #DSP-${StylingRequestProvider.instance.activeOrderCode.replaceAll("#", "")}-01'
+                      : 'Dispute Case #DSP-ACTIVE-01',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
