@@ -581,14 +581,23 @@ class MlKitPoseService {
 
     final jointDiffs = Map<String, double>.from(evaluation.jointDiffs);
 
-    // 6. Kiểm tra độ nghiêng vai
+    // 6. Kiểm tra độ nghiêng vai và độ rộng 2 vai (Shoulder Span)
     double shoulderTiltDeg = 0.0;
+    double shoulderSpan = 0.0;
     if (points.containsKey(PoseLandmarkType.leftShoulder) &&
         points.containsKey(PoseLandmarkType.rightShoulder)) {
       final ls = points[PoseLandmarkType.leftShoulder]!;
       final rs = points[PoseLandmarkType.rightShoulder]!;
       shoulderTiltDeg = (math.atan2((rs.dy - ls.dy).abs(), (rs.dx - ls.dx).abs()) * 180.0 / math.pi);
+      shoulderSpan = (ls.dx - rs.dx).abs();
     }
+
+    // Kiểm tra khuỷu tay có nằm trong khung hình (y < 0.95) hay không
+    final le = points[PoseLandmarkType.leftElbow];
+    final re = points[PoseLandmarkType.rightElbow];
+    final bool hasVisibleElbowInFrame =
+        (le != null && le.dy < 0.95) || (re != null && re.dy < 0.95);
+    final bool isLeaningTooClose = shoulderSpan > 0.68 || !hasVisibleElbowInFrame;
 
     // 7. Gate thân trên & Chặn nghịch lý buông tay không có khuỷu tay
     final bool hasBothShoulders = upperBodyCount >= 2;
@@ -614,6 +623,12 @@ class MlKitPoseService {
       finalScore = finalScore.clamp(10.0, 55.0);
       statusText = 'Step Back • Show Both Shoulders';
       coachingHint = 'Lùi lại nhẹ để thấy rõ hai vai';
+    } else if (isLeaningTooClose) {
+      // Chặn điểm cao khi người dùng dí sát mặt/cúi sát vào ống kính
+      needsFullBody = true;
+      finalScore = finalScore.clamp(20.0, 75.0);
+      statusText = 'Step Back • Frame Entire Pose';
+      coachingHint = 'Lùi lại nhẹ để lấy trọn dáng';
     } else if (requiresArmPose && visibleElbowCount == 0) {
       // Người dùng buông tay khuất khung hình trong khi mẫu giơ tay
       needsFullBody = true;

@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+import 'package:camera_android/camera_android.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,6 +25,9 @@ import 'widgets/technical_grid_background.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isAndroid) {
+    AndroidCamera.registerWith();
+  }
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await ApiConfig.loadEnv();
   await LocaleController.instance.init();

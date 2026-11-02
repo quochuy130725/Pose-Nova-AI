@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
+import '../core/localization/app_strings.dart';
 import '../core/ai/pose_matching_config.dart';
 import '../core/services/mlkit_pose_service.dart';
 import '../core/theme/app_colors.dart';
@@ -121,15 +122,28 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
         (c) => c.lensDirection == want,
         orElse: () => _cameras.first,
       );
-      final controller = CameraController(
-        description,
-        ResolutionPreset.medium,
-        enableAudio: false,
-        imageFormatGroup: _isAndroid
-            ? ImageFormatGroup.nv21
-            : (_isIOS ? ImageFormatGroup.bgra8888 : null),
-      );
-      await controller.initialize();
+
+      CameraController controller;
+      try {
+        controller = CameraController(
+          description,
+          ResolutionPreset.medium,
+          enableAudio: false,
+          imageFormatGroup: _isAndroid
+              ? ImageFormatGroup.nv21
+              : (_isIOS ? ImageFormatGroup.bgra8888 : null),
+        );
+        await controller.initialize();
+      } catch (firstErr) {
+        debugPrint('[PoseCamera] Medium init failed ($firstErr). Retrying with low preset fallback...');
+        controller = CameraController(
+          description,
+          ResolutionPreset.low,
+          enableAudio: false,
+        );
+        await controller.initialize();
+      }
+
       if (!mounted) {
         await controller.dispose();
         return;
@@ -140,14 +154,22 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
       await _startStream();
     } on CameraException catch (e) {
       if (!mounted) return;
+      final isEn = LocaleController.instance.isEnglish;
       setState(() {
         _cameraError = e.code.toLowerCase().contains('denied')
-            ? 'Bạn chưa cấp quyền camera. Hãy bật quyền trong Cài đặt rồi thử lại.'
-            : (e.description ?? e.code);
+            ? (isEn
+                ? 'Camera permission denied. Please enable camera permission in Settings.'
+                : 'Bạn chưa cấp quyền camera. Hãy bật quyền trong Cài đặt rồi thử lại.')
+            : (isEn
+                ? 'Could not initialize camera. Please tap Retry.'
+                : 'Không thể khởi động camera. Vui lòng bấm Thử lại.');
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _cameraError = 'Không mở được camera: $e');
+      final isEn = LocaleController.instance.isEnglish;
+      setState(() => _cameraError = isEn
+          ? 'Unable to open camera ($e). Please tap Retry.'
+          : 'Không thể mở camera. Vui lòng bấm Thử lại.');
     }
   }
 
@@ -280,12 +302,28 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
                 _smoothedScore * (1.0 - _config.scoreSmoothingFactor) +
                     raw.score * _config.scoreSmoothingFactor;
           }
+          final isEn = LocaleController.instance.isEnglish;
           final int displayScore = _smoothedScore.round();
-          final updatedStatus = raw.needsFullBody
-              ? raw.statusText
-              : (displayScore >= _config.matchThreshold
-                  ? 'Pose Matched ($displayScore%)'
-                  : 'Scanning Pose... ($displayScore%)');
+          final String updatedStatus;
+          if (raw.needsFullBody) {
+            if (isEn) {
+              updatedStatus = raw.statusText.contains('Shoulders')
+                  ? 'Step Back • Show Both Shoulders'
+                  : 'Step Back • Frame Entire Pose';
+            } else {
+              updatedStatus = raw.coachingHint.contains('Lùi lại')
+                  ? 'Lùi lại • Lấy trọn dáng người'
+                  : raw.statusText;
+            }
+          } else if (displayScore >= _config.matchThreshold) {
+            updatedStatus = isEn
+                ? 'Pose Matched ($displayScore%)'
+                : 'Khớp dáng ($displayScore%)';
+          } else {
+            updatedStatus = isEn
+                ? 'Scanning Pose... ($displayScore%)'
+                : 'Đang quét dáng... ($displayScore%)';
+          }
           frame = raw.copyWith(
             score: _smoothedScore,
             statusText: updatedStatus,
@@ -411,9 +449,18 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
     } finally {
       _isCapturing = false;
       _matchFrames = 0;
-      _autoCooldownUntil = DateTime.now().add(const Duration(seconds: 3));
+      _autoCooldownUntil = DateTime.now().add(const Duration(milliseconds: 1200));
       if (mounted) await _startStream();
     }
+  }
+
+  void _resetForRetake() {
+    _isCapturing = false;
+    _cancelCountdown();
+    _matchFrames = 0;
+    _autoCooldownUntil = DateTime.now();
+    _isBusy = false;
+    _smoothedScore = 0;
   }
 
   // ---------------------------------------------------------------------------
@@ -421,7 +468,9 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
   // ---------------------------------------------------------------------------
 
   Future<void> _showResultSheet(String path, double score) {
-    final bool isFrontCamera = _camera?.lensDirection == CameraLensDirection.front;
+    final bool isFrontCamera = (_camera?.lensDirection == CameraLensDirection.front) ||
+        (_controller?.description.lensDirection == CameraLensDirection.front);
+    final isEn = LocaleController.instance.isEnglish;
 
     return showModalBottomSheet<void>(
       context: context,
@@ -623,7 +672,12 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
                         Expanded(
                           flex: 1,
                           child: GestureDetector(
-                            onTap: isSaving ? null : () => Navigator.of(ctx).pop(),
+                            onTap: isSaving
+                                ? null
+                                : () {
+                                    _resetForRetake();
+                                    Navigator.of(ctx).pop();
+                                  },
                             child: Container(
                               height: 50,
                               decoration: BoxDecoration(
@@ -633,7 +687,7 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
                               ),
                               alignment: Alignment.center,
                               child: Text(
-                                'Chụp lại',
+                                isEn ? 'Retake' : 'Chụp lại',
                                 style: GoogleFonts.plusJakartaSans(
                                   color: Colors.white,
                                   fontSize: 13.5,
@@ -700,7 +754,9 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
                                                 const SizedBox(width: 8),
                                                 Expanded(
                                                   child: Text(
-                                                    'Đã lưu bức ảnh phong cách Tạp chí vào Thư viện!',
+                                                    isEn
+                                                        ? 'Saved magazine-style photo to Gallery!'
+                                                        : 'Đã lưu bức ảnh phong cách Tạp chí vào Thư viện!',
                                                     style: GoogleFonts.plusJakartaSans(
                                                       color: Colors.white,
                                                       fontWeight: FontWeight.w700,
@@ -719,7 +775,9 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
                                           SnackBar(
                                             backgroundColor: AppColors.ink,
                                             content: Text(
-                                              'Lỗi khi lưu ảnh: $e',
+                                              isEn
+                                                  ? 'Unable to save photo: $e'
+                                                  : 'Lỗi khi lưu ảnh: $e',
                                               style: GoogleFonts.plusJakartaSans(
                                                 color: Colors.white,
                                                 fontSize: 12,
@@ -759,7 +817,7 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
-                                          'Hoàn tất & Lưu ảnh',
+                                          isEn ? 'Save Photo' : 'Hoàn tất & Lưu ảnh',
                                           style: GoogleFonts.plusJakartaSans(
                                             color: Colors.white,
                                             fontSize: 13.5,
@@ -795,18 +853,22 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isEn = LocaleController.instance.isEnglish;
+
     if (!_poseSupported) {
       return Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(
-          title: const Text('AI Pose Camera'),
+          title: Text(isEn ? 'AI Pose Camera' : 'Camera Tạo Dáng AI'),
           backgroundColor: Colors.black,
         ),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Text(
-              'Tính năng Camera AI hiện chỉ hỗ trợ trên thiết bị thật (Android / iOS).',
+              isEn
+                  ? 'AI Pose Camera is currently only supported on physical devices (Android / iOS).'
+                  : 'Tính năng Camera AI hiện chỉ hỗ trợ trên thiết bị thật (Android / iOS).',
               textAlign: TextAlign.center,
               style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 14),
             ),
@@ -819,7 +881,7 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
       return Scaffold(
         backgroundColor: Colors.black,
         body: Center(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -834,7 +896,11 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () => _initCamera(),
-                  child: const Text('Thử lại'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.sunshineYellow,
+                    foregroundColor: AppColors.ink,
+                  ),
+                  child: Text(isEn ? 'Retry' : 'Thử lại'),
                 ),
               ],
             ),
@@ -971,8 +1037,10 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
                           const SizedBox(width: 10),
                           Text(
                             _countdown > 0
-                                ? 'Đang Chụp 1.2s (Giữ yên dáng)...'
-                                : 'Chụp ảnh (Take a Picture)',
+                                ? (isEn
+                                    ? 'Capturing in 1.2s (Hold still)...'
+                                    : 'Đang Chụp 1.2s (Giữ yên dáng)...')
+                                : (isEn ? 'Take a Picture' : 'Chụp ảnh'),
                             style: GoogleFonts.plusJakartaSans(
                               color: Colors.white,
                               fontSize: 14.5,
@@ -1082,11 +1150,28 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
               ? const Color(0xFF10B981)
               : (frame.needsFullBody ? AppColors.coralOrange : AppColors.sunshineYellow);
 
+          final isEn = LocaleController.instance.isEnglish;
           final String text;
           if (!frame.hasPose) {
-            text = 'Match Score: --  |  Đang tìm dáng người...';
+            text = isEn
+                ? 'Match Score: --  |  Detecting person...'
+                : 'Match Score: --  |  Đang tìm dáng người...';
           } else {
-            text = 'Match Score: ${frame.score.round()}%  |  ${frame.coachingHint}';
+            String hint = frame.coachingHint;
+            if (isEn) {
+              if (hint.contains('Tư thế hoàn hảo')) {
+                hint = 'Perfect pose! Hold still...';
+              } else if (hint.contains('Lùi lại')) {
+                hint = 'Step back slightly to frame entire pose';
+              } else if (hint.contains('Nâng khuỷu tay')) {
+                hint = 'Raise elbow to match target guide';
+              } else if (hint.contains('hai vai')) {
+                hint = 'Balance shoulders facing camera';
+              } else if (hint.contains('nét đứt')) {
+                hint = 'Align limbs with dashed guide';
+              }
+            }
+            text = 'Match Score: ${frame.score.round()}%  |  $hint';
           }
 
           return Container(
@@ -1114,8 +1199,10 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
   }
 
   Widget _buildTargetPip(PoseLookbook lookbook) {
+    final isEn = LocaleController.instance.isEnglish;
     final double targetWidth = _isTargetExpanded ? 185 : 115;
     final double targetHeight = _isTargetExpanded ? 245 : 150;
+    final String cleanTitle = lookbook.title.split('•').first.trim();
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -1189,7 +1276,9 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  _isTargetExpanded ? 'Thu nhỏ' : 'Phóng to',
+                  _isTargetExpanded
+                      ? (isEn ? 'Collapse' : 'Thu nhỏ')
+                      : (isEn ? 'Expand' : 'Phóng to'),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 8.5,
                     fontWeight: FontWeight.w700,
@@ -1211,7 +1300,7 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      lookbook.title,
+                      cleanTitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
