@@ -49,6 +49,7 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
   PoseDetector? _detector;
 
   bool _cameraReady = false;
+  bool _isCameraInitializing = false;
   String? _cameraError;
   bool _isBusy = false;
   bool _isCapturing = false;
@@ -105,13 +106,19 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
   }
 
   Future<void> _initCamera({CameraLensDirection? lens}) async {
+    if (_isCameraInitializing) return;
+    _isCameraInitializing = true;
+
     if (mounted) {
       setState(() {
         _cameraReady = false;
         _cameraError = null;
       });
     }
+
     try {
+      await _releaseCamera();
+
       if (_cameras.isEmpty) _cameras = await availableCameras();
       if (_cameras.isEmpty) {
         if (mounted) setState(() => _cameraError = 'Không tìm thấy camera trên thiết bị này.');
@@ -123,9 +130,9 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
         orElse: () => _cameras.first,
       );
 
-      CameraController controller;
+      CameraController? controller;
       try {
-        controller = CameraController(
+        final med = CameraController(
           description,
           ResolutionPreset.medium,
           enableAudio: false,
@@ -133,15 +140,17 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
               ? ImageFormatGroup.nv21
               : (_isIOS ? ImageFormatGroup.bgra8888 : null),
         );
-        await controller.initialize();
+        await med.initialize();
+        controller = med;
       } catch (firstErr) {
         debugPrint('[PoseCamera] Medium init failed ($firstErr). Retrying with low preset fallback...');
-        controller = CameraController(
+        final low = CameraController(
           description,
           ResolutionPreset.low,
           enableAudio: false,
         );
-        await controller.initialize();
+        await low.initialize();
+        controller = low;
       }
 
       if (!mounted) {
@@ -170,6 +179,8 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
       setState(() => _cameraError = isEn
           ? 'Unable to open camera ($e). Please tap Retry.'
           : 'Không thể mở camera. Vui lòng bấm Thử lại.');
+    } finally {
+      _isCameraInitializing = false;
     }
   }
 

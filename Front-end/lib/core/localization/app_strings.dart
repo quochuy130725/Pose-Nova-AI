@@ -716,7 +716,7 @@ class AppStringsVi extends AppStrings {
   String get topEscrowBanner => '100% BẢO CHỨNG KÝ QUỸ';
 
   @override
-  String get escrowContractCode => 'Hợp đồng: #REQ-8452';
+  String get escrowContractCode => 'Hợp Đồng Ký Quỹ';
 
   @override
   String get stage01Approved => '01 Đã Duyệt';
@@ -1277,7 +1277,7 @@ class AppStringsEn extends AppStrings {
   String get topEscrowBanner => '100% ESCROW SECURED';
 
   @override
-  String get escrowContractCode => 'Contract: #REQ-8452';
+  String get escrowContractCode => 'Escrow Contract';
 
   @override
   String get stage01Approved => '01 Approved';

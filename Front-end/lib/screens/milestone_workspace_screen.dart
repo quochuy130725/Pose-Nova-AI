@@ -7,11 +7,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 
 import '../core/localization/app_language.dart';
+import '../controllers/escrow_state_controller.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
 import '../core/utils/currency_formatter.dart';
-import '../data/models/milestone_model.dart';
-import '../data/repositories/mock_repository.dart';
 import '../providers/lookbook_provider.dart';
 import '../providers/styling_request_provider.dart';
 import '../widgets/brutalist_button.dart';
@@ -252,8 +251,6 @@ class MilestoneWorkspaceScreen extends StatefulWidget {
 }
 
 class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
-  final MockRepository _repository = MockRepository();
-  List<MilestoneModel>? _milestones;
   bool _isLoading = true;
 
   // Interactive demo states for Golden Path
@@ -282,16 +279,16 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
   bool _showSkeletonOverlay = true;
 
   final TextEditingController _affiliateLinkController = TextEditingController(
-    text: 'https://shopee.vn/cyber-utility-jacket-aw26-ltd',
+    text: '',
   );
   final TextEditingController _curationNotesController = TextEditingController(
-    text: 'Gợi ý phối cùng quần túi hộp ống rộng và boots đế cao.',
+    text: '',
   );
 
   @override
   void initState() {
     super.initState();
-    _uploadedImageUrl = widget.isStylistView ? null : 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=800&q=80';
+    _uploadedImageUrl = null;
     _uploadState = widget.isStylistView ? UploadState.idle : UploadState.tagged;
     _hasProductTag = !widget.isStylistView;
     _loadData();
@@ -306,13 +303,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
 
   Future<void> _loadData() async {
     try {
-      StylingRequestProvider.instance.fetchRequestsAndSelectActive();
-      final milestones = await _repository.loadMilestones();
-      setState(() {
-        _milestones = milestones;
-        _isLoading = false;
-      });
-    } catch (e) {
+      await StylingRequestProvider.instance.fetchRequestsAndSelectActive();
+    } catch (_) {}
+    if (mounted) {
       setState(() => _isLoading = false);
     }
   }
@@ -907,7 +900,11 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
     }
 
     return ListenableBuilder(
-      listenable: AppLanguageController.instance,
+      listenable: Listenable.merge([
+        AppLanguageController.instance,
+        StylingRequestProvider.instance,
+        EscrowStateController.instance,
+      ]),
       builder: (context, _) {
         final t = AppLanguageController.instance.t;
 
@@ -1515,6 +1512,31 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
     );
   }
 
+  String _resolveDeliverableImage(int stageIndex, String rawBrief) {
+    if (stageIndex == 1 && _uploadedImageUrl != null && _uploadedImageUrl!.isNotEmpty) {
+      return _uploadedImageUrl!;
+    }
+    final lower = rawBrief.toLowerCase();
+    if (lower.contains('biển') || lower.contains('summer') || lower.contains('resort') || lower.contains('beach')) {
+      if (stageIndex == 0) return 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80';
+      if (stageIndex == 1) return 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=800&q=80';
+      return 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80';
+    }
+    if (lower.contains('tiệc') || lower.contains('gala') || lower.contains('party') || lower.contains('evening')) {
+      if (stageIndex == 0) return 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=800&q=80';
+      if (stageIndex == 1) return 'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?auto=format&fit=crop&w=800&q=80';
+      return 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=800&q=80';
+    }
+    if (lower.contains('công sở') || lower.contains('office') || lower.contains('đi làm') || lower.contains('smart casual')) {
+      if (stageIndex == 0) return 'https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?auto=format&fit=crop&w=800&q=80';
+      if (stageIndex == 1) return 'https://images.unsplash.com/photo-1485230895905-ec40ba36b9bc?auto=format&fit=crop&w=800&q=80';
+      return 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=800&q=80';
+    }
+    if (stageIndex == 0) return 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=800&q=80';
+    if (stageIndex == 1) return _uploadedImageUrl ?? 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=800&q=80';
+    return 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=800&q=80';
+  }
+
   /// 4. Khu vực DELIVERABLE PREVIEW (Upload Dropzone cho Stylist / Preview cho Client)
   Widget _buildDeliverablePreviewSection(AppTranslations t) {
     if (widget.isStylistView && _selectedStageIndex == 1) {
@@ -1527,11 +1549,6 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
           return _buildUploadedStylistDeliverable(t);
       }
     }
-
-    final activeStage =
-        _milestones != null && _milestones!.length > _selectedStageIndex
-        ? _milestones![_selectedStageIndex]
-        : null;
 
     final String stageTitle = _selectedStageIndex == 0
         ? ('Moodboard & Concept')
@@ -1582,12 +1599,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                     ? 'Bộ ảnh Lookbook chất lượng cao và tệp mẫu dáng 33 điểm mốc cho Camera AI.'
                     : 'High-res Lookbook editorial and 33-landmark pose model for AI Camera.'));
 
-    final String imageUrl = _selectedStageIndex == 0
-        ? 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80'
-        : (_selectedStageIndex == 1
-              ? (_uploadedImageUrl ??
-                    'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=800&q=80')
-              : 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=800&q=80');
+    final String imageUrl = _resolveDeliverableImage(_selectedStageIndex, briefText);
 
     return Container(
       width: double.infinity,
@@ -1685,7 +1697,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                     color: const Color(0xFFF4F4F5),
                     alignment: Alignment.center,
                     child: Text(
-                      activeStage?.deliverableTitle ?? 'Deliverable Preview',
+                      stageTitle,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,

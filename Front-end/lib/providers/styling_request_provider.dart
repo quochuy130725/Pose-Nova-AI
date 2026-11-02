@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../controllers/escrow_state_controller.dart';
 import '../core/network/api_client.dart';
 import 'wallet_provider.dart';
 
@@ -44,6 +45,37 @@ class StylingRequestProvider extends ChangeNotifier {
   /// Fetch all styling requests for the current user and select the active one.
   Future<void> fetchRequestsAndSelectActive() => fetchRequests();
 
+  void restoreActiveRequest(Map<String, dynamic> request) {
+    _activeRequest = Map<String, dynamic>.from(request);
+    final rawCode = _activeRequest!['code']?.toString() ?? '';
+    _activeRequest!['code'] = rawCode.startsWith('#') ? rawCode : (rawCode.isEmpty ? '' : '#$rawCode');
+    _syncWalletWithActiveOrder(notify: false);
+    notifyListeners();
+  }
+
+  void restoreStageStatuses(Map<int, String> statuses) {
+    _stageStatuses = Map<int, String>.from(statuses);
+    notifyListeners();
+  }
+
+  void setStageStatus(int stageOrder, String status) {
+    _stageStatuses = Map<int, String>.from(_stageStatuses);
+    _stageStatuses[stageOrder] = status;
+    notifyListeners();
+  }
+
+  void clearActiveRequest() {
+    _activeRequest = null;
+    _requests = [];
+    _stageStatuses = {
+      1: 'ACTIVE',
+      2: 'LOCKED',
+      3: 'LOCKED',
+    };
+    WalletProvider.instance.clearActiveOrderState(notify: true);
+    notifyListeners();
+  }
+
   Future<void> fetchRequests() async {
     _isLoading = true;
     _errorMessage = null;
@@ -66,10 +98,13 @@ class StylingRequestProvider extends ChangeNotifier {
           _activeRequest!['code'] = codeStr.startsWith('#') ? codeStr : (codeStr.isEmpty ? '' : '#$codeStr');
         }
         _syncWalletWithActiveOrder(notify: false);
+        EscrowStateController.instance.saveActiveOrder(_activeRequest!);
       } else {
         _requests = [];
-        _activeRequest = null;
-        WalletProvider.instance.clearActiveOrderState(notify: false);
+        // CRITICAL: NEVER wipe out active order if user already has an active order in session
+        if (_activeRequest == null) {
+          WalletProvider.instance.clearActiveOrderState(notify: false);
+        }
       }
     } catch (e) {
       _errorMessage = e.toString();
@@ -260,6 +295,7 @@ class StylingRequestProvider extends ChangeNotifier {
       3: 'LOCKED',
     };
     _syncWalletWithActiveOrder(notify: true);
+    EscrowStateController.instance.saveActiveOrder(_activeRequest!);
 
     _isLoading = false;
     notifyListeners();
@@ -292,6 +328,9 @@ class StylingRequestProvider extends ChangeNotifier {
         _activeRequest!['status'] = 'IN_PROGRESS';
       }
       _syncWalletWithActiveOrder(notify: true);
+      if (_activeRequest != null) {
+        EscrowStateController.instance.saveActiveOrder(_activeRequest!);
+      }
       _isLoading = false;
       notifyListeners();
       return true;
@@ -299,6 +338,7 @@ class StylingRequestProvider extends ChangeNotifier {
       _errorMessage = e.toString();
       if (_activeRequest != null) {
         _activeRequest!['status'] = 'IN_PROGRESS';
+        EscrowStateController.instance.saveActiveOrder(_activeRequest!);
       }
       _syncWalletWithActiveOrder(notify: true);
       _isLoading = false;
@@ -343,6 +383,14 @@ class StylingRequestProvider extends ChangeNotifier {
     _stageStatuses[order] = 'APPROVED';
     if (order < 3 && _stageStatuses[order + 1] == 'LOCKED') {
       _stageStatuses[order + 1] = 'ACTIVE';
+    }
+
+    EscrowStateController.instance.updateStageStatus(order, 'APPROVED');
+    if (order < 3 && _stageStatuses[order + 1] == 'ACTIVE') {
+      EscrowStateController.instance.updateStageStatus(order + 1, 'ACTIVE');
+    }
+    if (_activeRequest != null) {
+      EscrowStateController.instance.saveActiveOrder(_activeRequest!);
     }
 
     // Synchronize WalletProvider balances and Escrow Reconciliation Ledger

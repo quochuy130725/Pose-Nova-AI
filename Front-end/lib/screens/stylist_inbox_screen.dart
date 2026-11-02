@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
+import '../controllers/escrow_state_controller.dart';
 import '../core/localization/app_language.dart';
 import '../core/utils/currency_formatter.dart';
 import '../providers/styling_request_provider.dart';
@@ -176,7 +177,11 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
   Widget build(BuildContext context) {
     final l = AppLanguageController.instance;
     return ListenableBuilder(
-      listenable: StylingRequestProvider.instance,
+      listenable: Listenable.merge([
+        StylingRequestProvider.instance,
+        EscrowStateController.instance,
+        AppLanguageController.instance,
+      ]),
       builder: (context, _) {
         final requestProvider = StylingRequestProvider.instance;
         final String activeCode = requestProvider.activeOrderCode;
@@ -466,7 +471,11 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Alex Đỗ (Client)',
+                            StylingRequestProvider.instance.hasActiveOrder
+                                ? (StylingRequestProvider.instance.activeRequest?['client']?['fullName']?.toString() ??
+                                   StylingRequestProvider.instance.activeRequest?['clientName']?.toString() ??
+                                   (l.isEnglish ? 'Client Order' : 'Quý Khách (Client)'))
+                                : (l.isEnglish ? 'Client Order' : 'Quý Khách (Client)'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.plusJakartaSans(

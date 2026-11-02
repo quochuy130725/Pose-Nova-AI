@@ -16,6 +16,7 @@ import 'screens/pose_camera_screen.dart';
 import 'screens/stylist_inbox_screen.dart';
 import 'screens/stylist_wallet_screen.dart';
 import 'core/localization/app_language.dart';
+import 'controllers/escrow_state_controller.dart';
 import 'widgets/brutalist_badge.dart';
 import 'widgets/brutalist_card.dart';
 import 'widgets/fashion_dock_button.dart';
@@ -31,6 +32,7 @@ void main() async {
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await ApiConfig.loadEnv();
   await LocaleController.instance.init();
+  await EscrowStateController.instance.init();
   runApp(const PoseNovaApp());
 }
 

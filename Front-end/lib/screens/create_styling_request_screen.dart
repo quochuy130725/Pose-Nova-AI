@@ -8,7 +8,7 @@ import '../providers/styling_request_provider.dart';
 import '../widgets/brutalist_badge.dart';
 import '../widgets/fashion_dock_button.dart';
 import '../widgets/technical_grid_background.dart';
-import 'milestone_workspace_screen.dart';
+import 'client_main_shell.dart';
 
 /// Screen 03: Styling Brief & AI Stylist Matching
 /// Stylofy's stacked overlapping card deck:
@@ -292,7 +292,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
           builder: (sheetContext, setSheetState) {
             return SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -307,40 +307,56 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                     const SizedBox(height: 14),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'VietQR SePay Escrow',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.ink,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'VietQR SePay Escrow',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.ink,
+                                ),
                               ),
-                            ),
-                            Text(
-                              'Mã đơn: $code • Ký quỹ 100% trung gian',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textMuted,
+                              const SizedBox(height: 2),
+                              Text(
+                                'Mã đơn: $code • Ký quỹ 100% trung gian',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textMuted,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFDCFCE7),
-                            borderRadius: BorderRadius.circular(999),
+                            ],
                           ),
-                          child: Text(
-                            CurrencyFormatter.formatVnd(budget),
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFF15803D),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          fit: FlexFit.loose,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDCFCE7),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                CurrencyFormatter.formatVnd(budget),
+                                maxLines: 1,
+                                style: GoogleFonts.jetBrainsMono(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFF15803D),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -419,7 +435,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => const MilestoneWorkspaceScreen(),
+                                  builder: (_) => const ClientMainShell(initialTabIndex: 2),
                                 ),
                               );
                             },
