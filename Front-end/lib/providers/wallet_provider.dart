@@ -23,7 +23,7 @@ class WalletProvider extends ChangeNotifier {
     syncOrderEscrowState(
       orderCode: '#REQ-8452',
       totalBudget: 10000,
-      stageStatuses: const {1: 'APPROVED', 2: 'ACTIVE', 3: 'LOCKED'},
+      stageStatuses: const {1: 'ACTIVE', 2: 'LOCKED', 3: 'LOCKED'},
       notify: false,
     );
   }
@@ -35,8 +35,8 @@ class WalletProvider extends ChangeNotifier {
   // Synchronized mathematical balances for the active order (default 10,000 VND)
   // Stage 1 (30% = 3,000 gross -> 85% = 2,550 net, 15% = 450 fee) is Approved & Released.
   // Remaining locked (70% = 7,000 gross -> 85% = 5,950 net).
-  int _availableBalanceVnd = 2550;
-  int _escrowLockedVnd = 5950;
+  int _availableBalanceVnd = 0;
+  int _escrowLockedVnd = 8500;
   List<LedgerEntry> _ledger = [];
 
   bool get isLoading => _isLoading;

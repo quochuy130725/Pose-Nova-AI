@@ -24,8 +24,8 @@ async function main() {
   await prisma.productTag.deleteMany({});
   await prisma.lookbookLike.deleteMany({});
   await prisma.lookbook.deleteMany({});
-  await prisma.wallet.deleteMany({});
-  await prisma.user.deleteMany({});
+  await prisma.wallet.deleteMany({ where: { user: { email: { in: ['alex.do@gmail.com', 'maya.tran@posenova.com', 'linh.dan@posenova.com'] } } } });
+  await prisma.user.deleteMany({ where: { email: { in: ['alex.do@gmail.com', 'maya.tran@posenova.com', 'linh.dan@posenova.com'] } } });
 
   // ==========================================
   // 1. TẠO NGƯỜI DÙNG DEMO (USERS)
@@ -43,7 +43,7 @@ async function main() {
       ratingAvg: 5.0,
       wallet: {
         create: {
-          availableBalance: 500000.00, // Client có sẵn 500k trong ví
+          availableBalance: 0.00, // Client có sẵn 0đ trong ví
           escrowLockedBalance: 0.00,
         },
       },
@@ -62,8 +62,8 @@ async function main() {
       totalReviews: 1,
       wallet: {
         create: {
-          availableBalance: 1250000.00, // Stylist đã có sẵn 1tr250 từ các đơn trước
-          escrowLockedBalance: 0.00,
+          availableBalance: 0.00,
+          escrowLockedBalance: 8500.00, // Khóa 85% Net của đơn 10.000đ (8.500đ)
           bankName: 'Techcombank',
           bankAccountNo: '190345678910',
           bankAccountHolder: 'TRAN THI KHANH MAYA',
@@ -178,16 +178,16 @@ async function main() {
   // ==========================================
 
   // Tổng ngân sách đơn hàng là 2.500.000 VNĐ
-  const totalBudget = 2500000.00;
+  const totalBudget = 10000.00;
 
   const stylingRequest = await prisma.stylingRequest.create({
     data: {
       code: 'REQ-8452',
       clientId: client.id,
       stylistId: stylist.id,
-      title: 'Urban Cyberpunk Outfit',
-      occasion: 'Cyber Concert Weekend 2026',
-      briefText: 'I need a comfortable streetwear-cyberpunk fusion look for an outdoor festival in cold weather. Needs to have metallic or dark neon highlights.',
+      title: 'Phối Đồ Streetwear Đi Sự Kiện Công Nghệ',
+      occasion: 'Sự kiện Tech Fashion Show 2026',
+      briefText: 'Cần phối bộ trang phục Streetwear tối giản đi sự kiện công nghệ, ưu tiên chất liệu thoáng mát và form rộng.',
       aiPaletteJson: ['#09090B', '#F43F5E', '#10B981', '#A855F7'], // Bảng màu từ AI
       totalBudget: totalBudget,
       status: RequestStatus.IN_PROGRESS, // Đơn đã bắt đầu và đã nạp cọc 100%
@@ -195,19 +195,16 @@ async function main() {
     },
   });
 
-  // Tự động phân tách 3 Chặng Ký quỹ (30% - 30% - 40%)
+  // Tự động phân tách 3 Chặng Ký quỹ (30% - 30% - 40%) - Đơn mới tinh: Stage 1 ACTIVE, Stage 2 & 3 LOCKED
   const m1 = await prisma.requestMilestone.create({
     data: {
       requestId: stylingRequest.id,
       stageOrder: 1,
-      title: 'Stage 1: Moodboard & Concept Study',
+      title: 'Moodboard & Concept',
       percentage: 30,
-      grossAmount: 750000.00,
-      netPayout: 637500.00, // Stylist thực nhận 85% Net Payout
-      status: MilestoneStatus.APPROVED, // CHẶNG 1 ĐÃ ĐƯỢC DUYỆT & GIẢI NGÂN
-      deliverableUrl: 'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?auto=format&fit=crop&w=600&q=80',
-      stylistNotes: 'This moodboard explores technical overlays, deep charcoal colors, and cyber-pink accent fabrics.',
-      approvedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      grossAmount: 3000.00,
+      netPayout: 2550.00, // 85% Net
+      status: MilestoneStatus.ACTIVE, // CHẶNG 1 ĐANG HOẠT ĐỘNG, SẴN SÀNG NỘP BÀI
     },
   });
 
@@ -215,14 +212,11 @@ async function main() {
     data: {
       requestId: stylingRequest.id,
       stageOrder: 2,
-      title: 'Stage 2: Outfit Selection & Smart Tagging',
+      title: 'Outfit Selection & Smart Tagging',
       percentage: 30,
-      grossAmount: 750000.00,
-      netPayout: 637500.00,
-      status: MilestoneStatus.IN_REVIEW, // CHẶNG 2 ĐANG CHỜ DUYỆT (SLA 48H)
-      deliverableUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=600&q=80',
-      stylistNotes: 'Check out the tech-layers and custom cargo options. Affiliate product links are attached below.',
-      autoReleaseAt: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // Tự động duyệt sau 24 giờ tới
+      grossAmount: 3000.00,
+      netPayout: 2550.00,
+      status: MilestoneStatus.LOCKED,
     },
   });
 
@@ -230,11 +224,11 @@ async function main() {
     data: {
       requestId: stylingRequest.id,
       stageOrder: 3,
-      title: 'Stage 3: Final Custom Lookbook & ML Kit Poses',
+      title: 'Final Lookbook & ML Kit Poses',
       percentage: 40,
-      grossAmount: 1000000.00,
-      netPayout: 850000.00,
-      status: MilestoneStatus.LOCKED, // CHẶNG 3 ĐANG BỊ KHÓA (CHỜ QUA CHẶNG 2)
+      grossAmount: 4000.00,
+      netPayout: 3400.00,
+      status: MilestoneStatus.LOCKED,
     },
   });
 
@@ -307,35 +301,10 @@ async function main() {
       },
     });
 
-    // Cập nhật tạm khóa Escrow
+    // Cập nhật tạm khóa Escrow 85% Net (8.500đ)
     await prisma.wallet.update({
       where: { id: stylistWallet.id },
-      data: { escrowLockedBalance: 2125000.00 }, // Khóa 85% Net
-    });
-
-    // 2. Chặng 1 đã Duyệt, hệ thống tự động giải ngân 30% Net (637.5K) cho Stylist, thu phí sàn 15% (112.5k)
-    await prisma.paymentTransaction.create({
-      data: {
-        requestId: stylingRequest.id,
-        milestoneId: m1.id,
-        walletId: stylistWallet.id,
-        type: TransactionType.MILESTONE_RELEASE,
-        grossAmount: 750000.00, // 30% Gross
-        feeAmount: 112500.00,    // 15% Sàn
-        netAmount: 637500.00,    // 85% Net Stylist nhận
-        status: TransactionStatus.COMPLETED,
-        description: 'Auto-released 30% Net Milestone 1 payout from escrow of order #REQ-8452',
-        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      },
-    });
-
-    // Cập nhật tài khoản ví Stylist (Nhận được 637k chặng 1, còn khóa 1tr487k)
-    await prisma.wallet.update({
-      where: { id: stylistWallet.id },
-      data: {
-        availableBalance: { increment: 637500.00 },
-        escrowLockedBalance: { decrement: 637500.00 },
-      },
+      data: { escrowLockedBalance: 8500.00, availableBalance: 0.00 },
     });
   }
 

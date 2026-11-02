@@ -214,9 +214,17 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
   // Interactive demo states for Golden Path
   int _revisionCount = 1;
   final int _maxRevisions = 2;
+  bool _stage1Approved = false;
   bool _stage2Approved = false;
   bool _stage3Approved = false;
-  int _selectedStageIndex = 1; // Stage 2 active
+  int _selectedStageIndex = 0; // Stage 1 active by default
+
+  bool get isStage1Approved =>
+      _stage1Approved || StylingRequestProvider.instance.isStageApproved(1);
+  bool get isStage2Approved =>
+      _stage2Approved || StylingRequestProvider.instance.isStageApproved(2);
+  bool get isStage3Approved =>
+      _stage3Approved || StylingRequestProvider.instance.isStageApproved(3);
 
   // Stylist View Deliverable Upload & Tag States
   UploadState _uploadState = UploadState.idle;
@@ -375,6 +383,107 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
         },
       );
     }
+  }
+
+  void _handleApproveStage1() {
+    setState(() {
+      _stage1Approved = true;
+    });
+    StylingRequestProvider.instance.approveMilestone(1);
+    final stage1Net = StylingRequestProvider.instance.stageNetAmount(1);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(AppColors.cardRadius)),
+          border: const Border(
+            top: BorderSide(color: AppColors.ink, width: AppColors.cardBorderWidth),
+            left: BorderSide(color: AppColors.ink, width: AppColors.cardBorderWidth),
+            right: BorderSide(color: AppColors.ink, width: AppColors.cardBorderWidth),
+          ),
+          boxShadow: AppColors.hardShadow,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.cyber,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.ink, width: 2.0),
+                    boxShadow: AppColors.chipShadow,
+                  ),
+                  child: const Icon(Icons.check, color: AppColors.ink, size: 28),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Giải ngân Chặng 1 thành công!',
+                        style: AppTheme.headingStyle.copyWith(fontSize: 16),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '+${CurrencyFormatter.formatVnd(stage1Net)} đã vào Ví Stylist (Đã trừ 15% phí sàn)',
+                        style: AppTheme.monoStyle.copyWith(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.cyber,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'Bản thảo Moodboard & Concept đã được nghiệm thu. Hệ thống đã mở khóa Chặng 02 (Phối đồ & Gắn thẻ sản phẩm) cho Stylist tiếp tục làm việc.',
+              style: AppTheme.bodyStyle.copyWith(fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: BrutalistButton(
+                    text: 'Ở LẠI XEM',
+                    backgroundColor: AppColors.cardBackground,
+                    textColor: AppColors.ink,
+                    height: 48,
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: BrutalistButton(
+                    text: 'TIẾP TỤC CHẶNG 02 →',
+                    backgroundColor: AppColors.electricYellow,
+                    textColor: AppColors.ink,
+                    height: 48,
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      setState(() {
+                        _selectedStageIndex = 1;
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _handleApproveStage2() {
@@ -846,10 +955,14 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
         _buildEditorialMilestoneCard(
           badgeNumber: '01',
           title: 'Moodboard & Concept',
-          statusText: 'Approved & Released',
+          statusText: isStage1Approved
+              ? 'Approved & Released'
+              : (widget.isStylistView
+                  ? (_isSubmitted ? 'In Review • Chờ Client duyệt' : 'Active • Sẵn sàng nộp')
+                  : (_isSubmitted ? 'In Review • Chờ bạn duyệt' : 'Active • Ready to Review')),
           amountText: CurrencyFormatter.formatVnd(stage1Gross),
           percentageText: '30%',
-          isHeroGradient: false,
+          isHeroGradient: _selectedStageIndex == 0,
           isActive: _selectedStageIndex == 0,
           isLocked: false,
           onTap: () => setState(() => _selectedStageIndex = 0),
@@ -866,19 +979,35 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
         _buildEditorialMilestoneCard(
           badgeNumber: '02',
           title: 'Outfit Selection & Pose',
-          statusText: widget.isStylistView
-              ? (_isSubmitted
-                  ? 'In Review • Ready for Client'
-                  : (_uploadState == UploadState.tagged
-                      ? 'Ready to Submit • Tagged'
-                      : 'Active • Ready to Upload'))
-              : (_stage2Approved ? 'Approved & Released' : 'Active • Ready to Review'),
+          statusText: !isStage1Approved
+              ? 'Locked • Complete Stage 01'
+              : (isStage2Approved
+                  ? 'Approved & Released'
+                  : (widget.isStylistView
+                      ? (_uploadState == UploadState.tagged
+                          ? 'Ready to Submit • Tagged'
+                          : 'Active • Ready to Upload')
+                      : 'Active • Ready to Review')),
           amountText: CurrencyFormatter.formatVnd(stage2Gross),
           percentageText: '30%',
-          isHeroGradient: true,
+          isHeroGradient: _selectedStageIndex == 1,
           isActive: _selectedStageIndex == 1,
-          isLocked: false,
-          onTap: () => setState(() => _selectedStageIndex = 1),
+          isLocked: !isStage1Approved,
+          onTap: () {
+            if (isStage1Approved) {
+              setState(() => _selectedStageIndex = 1);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    t.isVi
+                        ? 'Mốc 02 đang khóa! Duyệt Mốc 01 để mở khóa tiếp tục.'
+                        : 'Stage 02 locked! Approve Stage 01 to unlock.',
+                  ),
+                ),
+              );
+            }
+          },
         ),
 
         if (_selectedStageIndex == 1) ...[
@@ -892,16 +1021,16 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
         _buildEditorialMilestoneCard(
           badgeNumber: '03',
           title: 'Final Lookbook',
-          statusText: _stage3Approved
+          statusText: isStage3Approved
               ? 'Approved & Released'
-              : (_stage2Approved ? 'Active • Ready to Review' : 'Locked'),
+              : (isStage2Approved ? 'Active • Ready to Review' : 'Locked'),
           amountText: CurrencyFormatter.formatVnd(stage3Gross),
           percentageText: '40%',
-          isHeroGradient: false,
+          isHeroGradient: _selectedStageIndex == 2,
           isActive: _selectedStageIndex == 2,
-          isLocked: !_stage2Approved,
+          isLocked: !isStage2Approved,
           onTap: () {
-            if (_stage2Approved) {
+            if (isStage2Approved) {
               setState(() => _selectedStageIndex = 2);
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -1124,7 +1253,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
         : null;
 
     final String stageTitle = _selectedStageIndex == 0
-        ? (t.isVi ? 'Stage 01 • Moodboard & Concept' : 'Stage 01 • Moodboard Deliverable')
+        ? ('Moodboard & Concept')
         : (_selectedStageIndex == 1
             ? (t.isVi ? 'Stage 02 • Phối Đồ & Thẻ Sản Phẩm' : 'Stage 02 • Outfit Selection & Tags')
             : (t.isVi ? 'Stage 03 • Lookbook Hoàn Chỉnh & Dáng AI' : 'Stage 03 • Final Lookbook & Pose'));
@@ -2404,6 +2533,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
 
     // Client View Action Bar with Stage-Specific Lock/Approve States
     final reqProvider = StylingRequestProvider.instance;
+    final stage1Net = reqProvider.stageNetAmount(1);
     final stage2Net = reqProvider.stageNetAmount(2);
     final stage3Net = reqProvider.stageNetAmount(3);
 
@@ -2425,34 +2555,93 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // TRƯỜNG HỢP 1: Chặng 01 đã giải ngân hoàn tất
+          // TRƯỜNG HỢP 1: Chặng 01 (30% Moodboard & Concept)
           if (_selectedStageIndex == 0) ...[
-            Container(
-              height: 50,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: const Color(0xFFBBF7D0), width: 1.2),
+            if (isStage1Approved) ...[
+              Container(
+                height: 50,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0xFFBBF7D0), width: 1.2),
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      'STAGE 01 ĐÃ GIẢI NGÂN HOÀN TẤT',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF16A34A),
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              alignment: Alignment.center,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    'STAGE 01 ĐÃ GIẢI NGÂN HOÀN TẤT',
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: () => setState(() => _selectedStageIndex = 1),
+                child: Container(
+                  height: 46,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: AppColors.electricYellow,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: AppColors.ink, width: 1.5),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'CHUYỂN SANG CHẶNG 02 (OUTFIT & TAGS) →',
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      color: const Color(0xFF16A34A),
-                      letterSpacing: 0.3,
+                      color: AppColors.ink,
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
+            ] else ...[
+              FashionDockButton(
+                text: 'APPROVE & RELEASE 30% PAYOUT (+${CurrencyFormatter.formatVnd(stage1Net)})',
+                icon: Icons.verified_user,
+                onPressed: _handleApproveStage1,
+              ),
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: _handleRequestRevision,
+                child: Container(
+                  height: 44,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0xFFE4E4E7), width: 1.0),
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.edit_note, size: 16, color: Color(0xFF18181B)),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${t.requestRevisionBtn} ($_revisionCount/$_maxRevisions)',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF18181B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ]
 
           // TRƯỜNG HỢP 2: Chặng 02 (30% Outfit Selection & Pose)

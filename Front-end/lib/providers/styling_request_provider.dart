@@ -18,8 +18,8 @@ class StylingRequestProvider extends ChangeNotifier {
   /// 'ACTIVE'   = Active • Ready to Review
   /// 'LOCKED'   = Locked
   Map<int, String> _stageStatuses = {
-    1: 'APPROVED',
-    2: 'ACTIVE',
+    1: 'ACTIVE',
+    2: 'LOCKED',
     3: 'LOCKED',
   };
 
@@ -219,8 +219,8 @@ class StylingRequestProvider extends ChangeNotifier {
     // Reset stage progression for the newly created order:
     // Stage 01 (30% Draft) is Approved & Released, Stage 02 (30% Outfit) is Active, Stage 03 (40% Final) is Locked.
     _stageStatuses = {
-      1: 'APPROVED',
-      2: 'ACTIVE',
+      1: 'ACTIVE',
+      2: 'LOCKED',
       3: 'LOCKED',
     };
     _syncWalletWithActiveOrder(notify: true);
@@ -458,7 +458,7 @@ class StylingRequestProvider extends ChangeNotifier {
   String get activeBriefText {
     final text = _activeRequest?['briefText']?.toString();
     if (text != null && text.trim().isNotEmpty) return text;
-    return 'Cần phối đồ đi sự kiện Tech Fashion Show. Thích tone màu tối giản (Đen/Xám/Bạc), che khuyết điểm vai ngang và giúp tôn chiều cao khi lên hình.';
+    return 'Cần phối bộ trang phục Streetwear tối giản đi sự kiện công nghệ, ưu tiên chất liệu thoáng mát và form rộng.';
   }
 
   String get activeVibe {

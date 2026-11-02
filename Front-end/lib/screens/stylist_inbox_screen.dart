@@ -332,55 +332,77 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l.isEnglish ? 'STYLIST NET PAYOUT (85%)' : 'THỰC NHẬN STYLIST (85% NET)',
-                          style: GoogleFonts.plusJakartaSans(
-                            color: Colors.white60,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.4,
+                    Expanded(
+                      flex: 5,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l.isEnglish ? 'STYLIST NET PAYOUT (85%)' : 'THỰC NHẬN STYLIST (85% NET)',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              color: Colors.white60,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.4,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          CurrencyFormatter.formatVnd(netTotal),
-                          style: GoogleFonts.plusJakartaSans(
-                            color: AppColors.sunshineYellow,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
+                          const SizedBox(height: 4),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              CurrencyFormatter.formatVnd(netTotal),
+                              style: GoogleFonts.plusJakartaSans(
+                                color: AppColors.sunshineYellow,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          l.isEnglish
-                              ? 'Total Escrow: ${CurrencyFormatter.formatVnd(totalBudget)}'
-                              : 'Tổng Ký Quỹ: ${CurrencyFormatter.formatVnd(totalBudget)}',
-                          style: GoogleFonts.plusJakartaSans(
-                            color: Colors.white,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 4,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              l.isEnglish
+                                  ? 'Total Escrow: ${CurrencyFormatter.formatVnd(totalBudget)}'
+                                  : 'Tổng Ký Quỹ: ${CurrencyFormatter.formatVnd(totalBudget)}',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: Colors.white,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          l.isEnglish
-                              ? 'Fee (15%): -${CurrencyFormatter.formatVnd(feeTotal)}'
-                              : 'Phí sàn (15%): -${CurrencyFormatter.formatVnd(feeTotal)}',
-                          style: GoogleFonts.plusJakartaSans(
-                            color: Colors.white60,
-                            fontSize: 11,
+                          const SizedBox(height: 2),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              l.isEnglish
+                                  ? 'Fee (15%): -${CurrencyFormatter.formatVnd(feeTotal)}'
+                                  : 'Phí sàn (15%): -${CurrencyFormatter.formatVnd(feeTotal)}',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: Colors.white60,
+                                fontSize: 11,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -477,20 +499,27 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.assignment_ind_outlined, size: 18, color: AppColors.ink),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Yêu Cầu Của Khách (Client Brief)',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(Icons.assignment_ind_outlined, size: 18, color: AppColors.ink),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Yêu Cầu Của Khách (Client Brief)',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.ink,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: () {
                   Navigator.push(
@@ -527,7 +556,10 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(
                 'Tone màu khách chọn:',
@@ -537,12 +569,8 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
                   color: AppColors.textMuted,
                 ),
               ),
-              const SizedBox(width: 10),
               ...paletteHex.map(
-                (hex) => Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: _buildColorDot(_parseHexColor(hex), hex),
-                ),
+                (hex) => _buildColorDot(_parseHexColor(hex), hex),
               ),
             ],
           ),
@@ -603,31 +631,38 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppColors.ink,
-                      borderRadius: BorderRadius.circular(10),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.ink,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.psychology_outlined,
+                        size: 15,
+                        color: AppColors.sunshineYellow,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.psychology_outlined,
-                      size: 15,
-                      color: AppColors.sunshineYellow,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l.isEnglish ? 'Gemini Co-pilot Styling AI' : 'Gemini Co-pilot Gợi Ý Phối Đồ',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.ink,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    l.isEnglish ? 'Gemini Co-pilot Styling AI' : 'Gemini Co-pilot Gợi Ý Phối Đồ',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                 decoration: BoxDecoration(
