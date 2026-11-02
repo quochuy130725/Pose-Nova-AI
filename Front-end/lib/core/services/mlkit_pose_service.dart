@@ -121,16 +121,22 @@ class TargetGhostSkeleton {
     final title = (lookbookTitle ?? '').toLowerCase();
     final bool isRaisedArmPose = title.contains('kimono') ||
         title.contains('outlaw') ||
-        title.contains('tokyo') ||
-        title.contains('cyber') ||
-        title.contains('rave') ||
         title.contains('power') ||
         title.contains('flare');
     final bool isChinPose = title.contains('chin') ||
         title.contains('sakura') ||
         title.contains('portrait') ||
         title.contains('selfie');
-    final bool isCrossArms = title.contains('cross');
+    final bool isPocketPose = title.contains('pocket') ||
+        title.contains('túi') ||
+        title.contains('denim') ||
+        title.contains('cargo') ||
+        title.contains('y2k');
+    final bool isResortPose = title.contains('resort') ||
+        title.contains('biển') ||
+        title.contains('summer') ||
+        title.contains('linen');
+    final bool isCrossArms = title.contains('cross') || title.contains('khoanh');
 
     Offset ls;
     Offset rs;
@@ -166,7 +172,7 @@ class TargetGhostSkeleton {
     Offset rw;
 
     if (isRaisedArmPose) {
-      // Dang 2 tay cao (Cyber Neo Kimono / Tokyo Outlaw)
+      // Dang 2 tay cao (Cyber Neo Kimono)
       le = Offset(ls.dx - span * 0.85, ls.dy - span * 0.45);
       re = Offset(rs.dx + span * 0.85, rs.dy - span * 0.45);
       lw = Offset(le.dx - span * 0.75, le.dy - span * 0.30);
@@ -177,6 +183,18 @@ class TargetGhostSkeleton {
       lw = Offset(midShoulder.dx - span * 0.10, midShoulder.dy - span * 0.20);
       re = Offset(rs.dx + span * 0.30, rs.dy + span * 0.90);
       rw = Offset(re.dx + span * 0.15, re.dy + span * 0.80);
+    } else if (isPocketPose) {
+      // Dáng đứng 1 tay đút túi quần, 1 tay buông tự nhiên
+      le = Offset(ls.dx - span * 0.35, ls.dy + span * 0.65);
+      lw = Offset(ls.dx - span * 0.10, ls.dy + span * 1.15);
+      re = Offset(rs.dx + span * 0.25, rs.dy + span * 0.90);
+      rw = Offset(re.dx + span * 0.12, re.dy + span * 0.85);
+    } else if (isResortPose) {
+      // Dáng dạo biển đón nắng: 1 tay chạm thái dương/nón, 1 tay buông tự nhiên
+      le = Offset(ls.dx - span * 0.45, ls.dy + span * 0.35);
+      lw = Offset(midShoulder.dx - span * 0.20, midShoulder.dy - span * 0.35);
+      re = Offset(rs.dx + span * 0.28, rs.dy + span * 0.90);
+      rw = Offset(re.dx + span * 0.12, re.dy + span * 0.85);
     } else if (isCrossArms) {
       // Khoanh tay trước ngực
       le = Offset(ls.dx - span * 0.35, ls.dy + span * 0.60);
@@ -184,11 +202,11 @@ class TargetGhostSkeleton {
       lw = Offset(midShoulder.dx + span * 0.25, midShoulder.dy + span * 0.55);
       rw = Offset(midShoulder.dx - span * 0.25, midShoulder.dy + span * 0.55);
     } else {
-      // Dáng đứng tự nhiên / Vest / Streetwear
-      le = Offset(ls.dx - span * 0.30, ls.dy + span * 0.90);
-      re = Offset(rs.dx + span * 0.30, rs.dy + span * 0.90);
-      lw = Offset(le.dx - span * 0.15, le.dy + span * 0.85);
-      rw = Offset(re.dx + span * 0.15, re.dy + span * 0.85);
+      // Dáng đứng thẳng tự nhiên (Natural Straight Standing: Trench / Blazer / Streetwear)
+      le = Offset(ls.dx - span * 0.28, ls.dy + span * 0.90);
+      re = Offset(rs.dx + span * 0.28, rs.dy + span * 0.90);
+      lw = Offset(le.dx - span * 0.10, le.dy + span * 0.85);
+      rw = Offset(re.dx + span * 0.10, re.dy + span * 0.85);
     }
 
     final lh = Offset(ls.dx + span * 0.10, ls.dy + span * 1.6);
@@ -389,13 +407,23 @@ class MlKitPoseService {
     String? title,
     String? category,
   }) {
+    // 0. Nếu Lookbook truyền trực tiếp bộ góc mẫu trong poseLandmarksJson thì ưu tiên dùng
+    if (poseLandmarksJson is Map) {
+      final customMap = <String, double>{};
+      poseLandmarksJson.forEach((k, v) {
+        if (v is num && k != 'poseType') {
+          customMap[k.toString()] = v.toDouble();
+        }
+      });
+      if (customMap.containsKey('leftElbow') && customMap.containsKey('leftShoulder')) {
+        return customMap;
+      }
+    }
+
     final combined = '${title ?? ''} ${category ?? ''}'.toLowerCase();
 
-    // 1. Dáng dang 2 tay / Cyber Neo Kimono / Tokyo Outlaw / Dynamic Rave
+    // 1. Dáng dang 2 tay / Cyber Neo Kimono / Dynamic Rave
     if (combined.contains('kimono') ||
-        combined.contains('outlaw') ||
-        combined.contains('tokyo') ||
-        combined.contains('cyber') ||
         combined.contains('power') ||
         combined.contains('rave')) {
       return {
@@ -411,7 +439,48 @@ class MlKitPoseService {
       };
     }
 
-    // 2. Dáng chân dung / Chống cằm / Sakura / Selfie / Blazer
+    // 2. Dáng đứng 1 tay đút túi (One-Hand Pocket / Denim / Cargo)
+    if (combined.contains('pocket') ||
+        combined.contains('túi') ||
+        combined.contains('denim') ||
+        combined.contains('cargo') ||
+        combined.contains('y2k')) {
+      return {
+        'leftArmFlare': 95.0,
+        'rightArmFlare': 92.0,
+        'headShoulderSpan': 82.0,
+        'leftElbow': 95.0,
+        'rightElbow': 155.0,
+        'leftShoulder': 45.0,
+        'rightShoulder': 30.0,
+        'leftHip': 174.0,
+        'rightHip': 175.0,
+        'leftKnee': 176.0,
+        'rightKnee': 175.0,
+      };
+    }
+
+    // 3. Dáng đứng dạo biển đón nắng (Summer Resort Linen)
+    if (combined.contains('resort') ||
+        combined.contains('biển') ||
+        combined.contains('summer') ||
+        combined.contains('linen')) {
+      return {
+        'leftArmFlare': 105.0,
+        'rightArmFlare': 95.0,
+        'headShoulderSpan': 82.0,
+        'leftElbow': 85.0,
+        'rightElbow': 150.0,
+        'leftShoulder': 70.0,
+        'rightShoulder': 32.0,
+        'leftHip': 172.0,
+        'rightHip': 174.0,
+        'leftKnee': 175.0,
+        'rightKnee': 175.0,
+      };
+    }
+
+    // 4. Dáng chân dung / Chống cằm / Sakura / Selfie
     if (combined.contains('sakura') ||
         combined.contains('chin') ||
         combined.contains('portrait') ||
@@ -429,8 +498,8 @@ class MlKitPoseService {
       };
     }
 
-    // 3. Dáng khoanh tay trước ngực
-    if (combined.contains('cross')) {
+    // 5. Dáng khoanh tay trước ngực
+    if (combined.contains('cross') || combined.contains('khoanh')) {
       return {
         'leftArmFlare': 120.0,
         'rightArmFlare': 120.0,
@@ -444,7 +513,7 @@ class MlKitPoseService {
       };
     }
 
-    // 4. Dáng ngồi / Suit / Office
+    // 6. Dáng ngồi / Suit / Office
     if (combined.contains('vest') ||
         combined.contains('suit') ||
         combined.contains('office') ||
@@ -464,17 +533,17 @@ class MlKitPoseService {
       };
     }
 
-    // 5. Dáng đứng Streetwear / Trench Coat mặc định
+    // 7. Dáng đứng thẳng tự nhiên mặc định (Natural Straight Standing: Trench / Blazer / Monochrome Street)
     return {
-      'leftArmFlare': 102.0,
-      'rightArmFlare': 102.0,
+      'leftArmFlare': 92.0,
+      'rightArmFlare': 92.0,
       'headShoulderSpan': 82.0,
-      'leftElbow': 142.0,
-      'rightElbow': 136.0,
-      'leftShoulder': 38.0,
-      'rightShoulder': 42.0,
-      'leftHip': 172.0,
-      'rightHip': 174.0,
+      'leftElbow': 158.0,
+      'rightElbow': 158.0,
+      'leftShoulder': 28.0,
+      'rightShoulder': 28.0,
+      'leftHip': 174.0,
+      'rightHip': 175.0,
       'leftKnee': 176.0,
       'rightKnee': 175.0,
     };
