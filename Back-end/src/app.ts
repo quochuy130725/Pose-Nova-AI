@@ -12,6 +12,7 @@ import { globalErrorHandler, notFoundHandler } from './common/middlewares/error.
 import { sendSuccess, sendError } from './common/utils/response.util';
 import { setupSwagger } from './config/swagger';
 import { apiV1Router } from './routes';
+import { webhooksRouter } from './integrations/sepay/sepay.webhook';
 
 export const app = express();
 
@@ -67,10 +68,14 @@ const healthHandler = async (_req: Request, res: Response, next: NextFunction): 
 app.get('/health', healthHandler);
 app.get('/api/v1/health', healthHandler);
 
-// 4. Mount Modular API v1 Routes
+// 4. Root webhook fallbacks (allows users who paste https://domain/webhook or https://domain/webhooks)
+app.use('/webhooks', webhooksRouter);
+app.use('/webhook', webhooksRouter);
+
+// 5. Mount Modular API v1 Routes
 app.use('/api/v1', apiV1Router);
 
-// 5. 404 & Centralized Error Middlewares
+// 6. 404 & Centralized Error Middlewares
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
 

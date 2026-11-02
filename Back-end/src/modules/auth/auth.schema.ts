@@ -10,7 +10,7 @@ export const demoLoginSchema = z.object({
 
 export const registerSchema = z.object({
   email: z.string().email('Invalid email address').transform((v) => v.trim().toLowerCase()),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(6, 'Password must be at least 6 characters').transform((v) => v.trim()),
   fullName: z.string().min(2, 'Full name must be at least 2 characters').trim(),
   role: z.enum(['CLIENT', 'STYLIST']).default('CLIENT'),
   heightCm: z.coerce.number().int().positive().max(250).optional(),
@@ -21,7 +21,7 @@ export const registerSchema = z.object({
 
 export const loginSchema = z.object({
   email: z.string().email('Invalid email address').transform((v) => v.trim().toLowerCase()),
-  password: z.string().min(1, 'Password is required'),
+  password: z.string().min(1, 'Password is required').transform((v) => v.trim()),
 });
 
 export type DemoLoginInput = z.infer<typeof demoLoginSchema>;

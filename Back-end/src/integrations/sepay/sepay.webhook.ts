@@ -4,7 +4,6 @@ import { SepayService } from './sepay.service';
 import { env } from '../../config/env';
 import { AppError } from '../../common/middlewares/error.middleware';
 import { sendSuccess } from '../../common/utils/response.util';
-import { validateBody } from '../../common/middlewares/validate.middleware';
 
 const sepayWebhookBodySchema = z.object({
   id: z.union([z.string(), z.number()]).optional(),
@@ -48,10 +47,38 @@ function verifySepayWebhookSecret(req: Request, _res: Response, next: NextFuncti
   return next();
 }
 
+async function handleSepayWebhook(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const rawBody = req.body ?? {};
+
+    // Gracefully handle empty ping / dashboard test ping from SePay
+    if (!rawBody || Object.keys(rawBody).length === 0) {
+      sendSuccess(
+        res,
+        { ping: 'ok', timestamp: new Date().toISOString() },
+        'SePay Webhook ping received successfully (test mode)',
+        200,
+      );
+      return;
+    }
+
+    const validated = sepayWebhookBodySchema.safeParse(rawBody);
+    const parsedData = validated.success ? validated.data : rawBody;
+
+    const result = await SepayService.processEscrowDeposit(parsedData);
+    const message = result.alreadyProcessed
+      ? 'Duplicate SePay reference code ignored (idempotent)'
+      : 'Escrow deposit confirmed: locked 85% net payout and initialized 30-30-40 milestones';
+    sendSuccess(res, result, message, 200);
+  } catch (err) {
+    next(err);
+  }
+}
+
 export const webhooksRouter = Router();
 
-// GET /api/v1/webhooks/sepay - Ping/Health check for SePay webhook URL
-webhooksRouter.get('/sepay', (_req: Request, res: Response) => {
+// GET health ping for both / and /sepay
+webhooksRouter.get(['/', '/sepay'], (_req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: 'PoseNova SePay Webhook endpoint is active and listening',
@@ -59,22 +86,11 @@ webhooksRouter.get('/sepay', (_req: Request, res: Response) => {
   });
 });
 
+// POST webhook handler for both / and /sepay
 webhooksRouter.post(
-  '/sepay',
+  ['/', '/sepay'],
   verifySepayWebhookSecret,
-  validateBody(sepayWebhookBodySchema),
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const result = await SepayService.processEscrowDeposit(req.body);
-      const message = result.alreadyProcessed
-        ? 'Duplicate SePay reference code ignored (idempotent)'
-        : 'Escrow deposit confirmed: locked 85% net payout and initialized 30-30-40 milestones';
-      sendSuccess(res, result, message, 200);
-    } catch (err) {
-      next(err);
-    }
-  },
+  handleSepayWebhook,
 );
 
 export default webhooksRouter;
-

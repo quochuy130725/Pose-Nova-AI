@@ -60,8 +60,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handlePrimarySubmit() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
+    final email = _emailController.text.trim().toLowerCase();
+    final password = _passwordController.text.trim();
 
     if (email.isEmpty || !email.contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(

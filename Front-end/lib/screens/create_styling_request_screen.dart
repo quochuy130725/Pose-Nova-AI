@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/localization/app_language.dart';
 import '../core/theme/app_colors.dart';
+import '../core/utils/currency_formatter.dart';
 import '../providers/auth_provider.dart';
 import '../providers/styling_request_provider.dart';
 import '../widgets/brutalist_badge.dart';
 import '../widgets/fashion_dock_button.dart';
 import '../widgets/technical_grid_background.dart';
-import 'escrow_checkout_screen.dart';
+import 'milestone_workspace_screen.dart';
 
 /// Screen 03: Styling Brief & AI Stylist Matching
 /// Stylofy's stacked overlapping card deck:
@@ -35,13 +36,15 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
   String _selectedVibe = '#STREET_TECH';
   bool _isEnhanced = false;
   bool _isSubmitting = false;
+  late int _selectedBudgetVnd;
   List<String> _aiPaletteHex = const ['#0D0F0E', '#00F5D4', '#FFFD38', '#FF5E36'];
 
   @override
   void initState() {
     super.initState();
+    _selectedBudgetVnd = widget.budgetVnd ?? 10000;
     _conceptController = TextEditingController(
-      text: widget.lookbookTitle ?? 'Cyberpunk Streetwear • Oversize Neon',
+      text: widget.lookbookTitle ?? 'Cyberpunk Streetwear · Oversize Neon',
     );
   }
 
@@ -49,15 +52,16 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
     final result = await StylingRequestProvider.instance.enhanceBriefWithGemini(
       heightCm: 175,
       weightKg: 65,
+      bodyType: 'Thon gọn',
       occasion: 'Streetwear Event',
       vibe: _selectedVibe,
-      briefText: _conceptController.text,
+      rawBrief: _conceptController.text,
     );
 
     if (!mounted) return;
-    final enhancedText = result['enhancedBrief']?.toString() ??
+    final enhancedText = result?['enhancedBrief']?.toString() ??
         'Cyberpunk Street Tech • Matte Black with Acid Lime Flare • Low Stride';
-    final rawPalette = result['suggestedPalette'] ?? result['colorPalette'];
+    final rawPalette = result?['suggestedPalette'] ?? result?['colorPalette'];
     if (rawPalette is List && rawPalette.isNotEmpty) {
       _aiPaletteHex = rawPalette.map((e) => e.toString()).toList();
     }
@@ -217,21 +221,17 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                       ? null
                       : () async {
                           setState(() => _isSubmitting = true);
-                          await StylingRequestProvider.instance.createStylingRequest(
+                          final created = await StylingRequestProvider.instance.createStylingRequest(
+                            title: _conceptController.text,
                             briefText: _conceptController.text,
                             occasion: 'Streetwear Event',
                             vibe: _selectedVibe,
-                            aiPaletteHex: _aiPaletteHex,
-                            totalBudget: widget.budgetVnd ?? 2500000,
+                            colorPalette: _aiPaletteHex,
+                            totalBudget: _selectedBudgetVnd,
                           );
                           if (!context.mounted) return;
                           setState(() => _isSubmitting = false);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const EscrowCheckoutScreen(),
-                            ),
-                          );
+                          _showSePayVietQrBottomSheet(created);
                         },
                 ),
               ),
@@ -239,6 +239,227 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
           ),
         );
       },
+    );
+  }
+
+  void _showSePayVietQrBottomSheet(Map<String, dynamic> requestData) {
+    final vietQrUrl = StylingRequestProvider.instance.activeVietQrUrl;
+    final code = StylingRequestProvider.instance.activeOrderCode;
+    final budget = _selectedBudgetVnd;
+    final stage1 = (budget * 0.30).round();
+    final stage2 = (budget * 0.30).round();
+    final stage3 = budget - stage1 - stage2;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) {
+        bool isVerifying = false;
+
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            return SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.black12,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'VietQR SePay Escrow',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                            Text(
+                              'Mã đơn: $code • Ký quỹ 100% trung gian',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFDCFCE7),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            CurrencyFormatter.formatVnd(budget),
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF15803D),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // VietQR Image Container
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.hairlineBorder, width: 1.2),
+                        boxShadow: AppColors.chipShadow,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.network(
+                          vietQrUrl,
+                          width: 210,
+                          height: 210,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            width: 210,
+                            height: 210,
+                            color: AppColors.porcelainSmoke,
+                            alignment: Alignment.center,
+                            child: const Icon(Icons.qr_code_2, size: 80, color: AppColors.petrol),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Bank & Escrow Information Card
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.porcelainSmoke,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.hairlineBorder),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildInfoRow('Ngân hàng:', 'MBBank (Quân Đội)'),
+                          const SizedBox(height: 4),
+                          _buildInfoRow('Số tài khoản:', '0829100286'),
+                          const SizedBox(height: 4),
+                          _buildInfoRow('Chủ tài khoản:', 'PHAM QUANG HUY'),
+                          const SizedBox(height: 4),
+                          _buildInfoRow('Nội dung:', 'POSENOVA ${code.replaceAll('#', '')}'),
+                          const Divider(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildMiniStageChip('30% Draft', CurrencyFormatter.formatVnd(stage1)),
+                              _buildMiniStageChip('30% Outfit', CurrencyFormatter.formatVnd(stage2)),
+                              _buildMiniStageChip('40% Final', CurrencyFormatter.formatVnd(stage3)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Action Button
+                    GestureDetector(
+                      onTap: isVerifying
+                          ? null
+                          : () async {
+                              setSheetState(() => isVerifying = true);
+                              await StylingRequestProvider.instance.simulateEscrowDeposit();
+                              if (!mounted) return;
+                              Navigator.pop(ctx);
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const MilestoneWorkspaceScreen(),
+                                ),
+                              );
+                            },
+                      child: Container(
+                        height: 52,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          gradient: AppColors.primaryGradient,
+                          borderRadius: BorderRadius.circular(999),
+                          boxShadow: AppColors.buttonShadow,
+                        ),
+                        alignment: Alignment.center,
+                        child: isVerifying
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.2),
+                              )
+                            : Text(
+                                'Xác nhận đã đặt cọc (Kích hoạt Escrow) →',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: Colors.white,
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.jetBrainsMono(fontSize: 11.5, color: AppColors.ink, fontWeight: FontWeight.w800),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiniStageChip(String stage, String amount) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.hairlineBorder),
+      ),
+      child: Column(
+        children: [
+          Text(stage, style: GoogleFonts.plusJakartaSans(fontSize: 9.5, fontWeight: FontWeight.w700, color: AppColors.textMuted)),
+          Text(amount, style: GoogleFonts.jetBrainsMono(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.ink)),
+        ],
+      ),
     );
   }
 
@@ -489,7 +710,73 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
     );
   }
 
-  /// Upright Budget Card: Luxurious Sunset Rose-to-Gold Gradient with "2.500.000đ"
+  Widget _buildQuickBudgetChip(int amount, String label) {
+    final isSelected = _selectedBudgetVnd == amount;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedBudgetVnd = amount),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.ink : Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: isSelected ? AppColors.ink : Colors.black12,
+            width: 1.0,
+          ),
+          boxShadow: isSelected ? AppColors.chipShadow : null,
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w800,
+            color: isSelected ? Colors.white : AppColors.ink,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCustomBudgetDialog() {
+    final ctrl = TextEditingController(text: _selectedBudgetVnd.toString());
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text(
+          'Nhập Ngân Sách Tùy Chỉnh',
+          style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800),
+        ),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            hintText: 'Nhập số tiền (VND, tối thiểu 2.000₫)',
+            suffixText: '₫',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('HỦY'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final val = int.tryParse(ctrl.text.replaceAll(RegExp(r'[^0-9]'), ''));
+              if (val != null && val >= 1000) {
+                setState(() => _selectedBudgetVnd = val);
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text('ÁP DỤNG'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Upright Budget Card: Custom budget chips + Slider + 3-Stage calculation
   Widget _buildBudgetAndEscrowCard() {
     return Stack(
       clipBehavior: Clip.none,
@@ -521,40 +808,88 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                 ),
               ),
               const SizedBox(height: 6),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(
-                    '2.500.000đ',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w900,
-                      color: const Color(0xFF1E1B18),
-                      letterSpacing: -1.0,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      borderRadius: BorderRadius.circular(999),
-                      boxShadow: AppColors.chipShadow,
-                    ),
-                    child: Text(
-                      '100% Secured',
+              GestureDetector(
+                onTap: _showCustomBudgetDialog,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      CurrencyFormatter.formatVnd(_selectedBudgetVnd),
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
                         color: const Color(0xFF1E1B18),
+                        letterSpacing: -1.0,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF1E1B18)),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(999),
+                        boxShadow: AppColors.chipShadow,
+                      ),
+                      child: Text(
+                        '100% Secured',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF1E1B18),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+
+              // Quick Budget Chips
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildQuickBudgetChip(2000, '2.000₫ (Test SePay)'),
+                    const SizedBox(width: 6),
+                    _buildQuickBudgetChip(10000, '10.000₫'),
+                    const SizedBox(width: 6),
+                    _buildQuickBudgetChip(50000, '50.000₫'),
+                    const SizedBox(width: 6),
+                    _buildQuickBudgetChip(500000, '500.000₫'),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Slider
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 3.5,
+                  activeTrackColor: AppColors.ink,
+                  inactiveTrackColor: Colors.white.withValues(alpha: 0.5),
+                  thumbColor: AppColors.ink,
+                  overlayColor: AppColors.ink.withValues(alpha: 0.15),
+                ),
+                child: Slider(
+                  value: _selectedBudgetVnd.toDouble().clamp(2000.0, 5000000.0),
+                  min: 2000.0,
+                  max: 5000000.0,
+                  divisions: 100,
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedBudgetVnd = (val / 1000).round() * 1000;
+                      if (_selectedBudgetVnd < 2000) _selectedBudgetVnd = 2000;
+                    });
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 12),
 
               // Visual 3-Stage Node Track (30% —o— 30% —o— 40%)
               _build3StageNodeTrack(),
@@ -588,8 +923,12 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
     );
   }
 
-  /// Visual 3-Stage Node Track: 3 Pill Blocks + Connected (o---o---o) Line
+  /// Visual 3-Stage Node Track: 3 Pill Blocks tính theo _selectedBudgetVnd
   Widget _build3StageNodeTrack() {
+    final stage1Vnd = (_selectedBudgetVnd * 0.30).round();
+    final stage2Vnd = (_selectedBudgetVnd * 0.30).round();
+    final stage3Vnd = _selectedBudgetVnd - stage1Vnd - stage2Vnd;
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -611,9 +950,10 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    '30% Draft',
+                    '30% Draft\n${CurrencyFormatter.formatVnd(stage1Vnd)}',
+                    textAlign: TextAlign.center,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
+                      fontSize: 9.5,
                       fontWeight: FontWeight.w800,
                       color: AppColors.petrol,
                     ),
@@ -630,9 +970,10 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    '30% Outfit',
+                    '30% Outfit\n${CurrencyFormatter.formatVnd(stage2Vnd)}',
+                    textAlign: TextAlign.center,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
+                      fontSize: 9.5,
                       fontWeight: FontWeight.w800,
                       color: AppColors.petrol,
                     ),
@@ -649,9 +990,10 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    '40% Final',
+                    '40% Final\n${CurrencyFormatter.formatVnd(stage3Vnd)}',
+                    textAlign: TextAlign.center,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
+                      fontSize: 9.5,
                       fontWeight: FontWeight.w800,
                       color: Colors.white70,
                     ),

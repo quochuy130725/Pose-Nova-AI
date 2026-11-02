@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,19 +15,16 @@ import '../core/services/mlkit_pose_service.dart';
 import '../core/theme/app_colors.dart';
 import '../providers/lookbook_provider.dart';
 import '../providers/pose_capture_provider.dart';
-import '../widgets/brutalist_badge.dart';
+import '../widgets/technical_grid_background.dart';
 
-/// Screen 02: AI Pose Camera
-/// - Camera that + Google ML Kit Pose Detection (33 landmark) chay tren thiet bi
-/// - Khung xuong ve theo co the that cua nguoi dung
-/// - Target la anh cua Lookbook dang duoc chon tu Discovery Feed
-/// - Chup anh that (takePicture) va luu vao Gallery bang package `gal`
+/// Screen 02: AI Pose Coach Camera
+/// - Nhận diện tư thế thời gian thực bằng Google ML Kit
+/// - Khung Xương Mẫu Nét Đứt tự động neo theo vai người dùng (Shoulder-Anchored Ghost Skeleton)
+/// - Tô màu từng đoạn xương (Per-Limb Color Feedback) & lời nhắc hành động tức thời
+/// - Auto-Shutter 1.2s & hiệu ứng chớp sáng Shutter Flash
+/// - Modal kết quả chuẩn Tạp chí Editorial Magazine & lưu đúng ảnh đã lật gương
 class PoseCameraScreen extends StatefulWidget {
-  /// Lookbook muc tieu. Neu null se dung Lookbook da chon trong
-  /// [LookbookProvider] (hoac Lookbook dau tien trong danh sach).
   final PoseLookbook? lookbook;
-
-  /// Callback khi bam nut quay ve (ho tro ca khi embedded trong Tab/Shell hoac duoc Push qua Navigator)
   final VoidCallback? onBack;
 
   const PoseCameraScreen({super.key, this.lookbook, this.onBack});
@@ -61,6 +61,8 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
   Timer? _countdownTimer;
   DateTime _autoCooldownUntil = DateTime.now();
   bool _isTargetExpanded = false;
+
+  final GlobalKey _previewRepaintKey = GlobalKey();
 
   String? _targetKey;
   Map<String, double>? _targetAngles;
@@ -188,10 +190,6 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
     await _initCamera(lens: next);
   }
 
-  // ---------------------------------------------------------------------------
-  // ML Kit: CameraImage -> InputImage -> Pose -> PoseFrame
-  // ---------------------------------------------------------------------------
-
   InputImage? _toInputImage(CameraImage image) {
     final camera = _camera;
     final controller = _controller;
@@ -271,17 +269,27 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
           mirror: _camera?.lensDirection == CameraLensDirection.front,
           targetAngles: _currentTargetAngles(),
           previousPoints: _previousPoints.isEmpty ? null : _previousPoints,
+          lookbookTitle: _lookbook.title,
         );
         _previousPoints = raw.points;
         if (raw.hasPose) {
           if (_smoothedScore == 0) {
-            _smoothedScore = raw.score; // Instant startup on first frame
+            _smoothedScore = raw.score;
           } else {
             _smoothedScore =
                 _smoothedScore * (1.0 - _config.scoreSmoothingFactor) +
                     raw.score * _config.scoreSmoothingFactor;
           }
-          frame = raw.copyWith(score: _smoothedScore);
+          final int displayScore = _smoothedScore.round();
+          final updatedStatus = raw.needsFullBody
+              ? raw.statusText
+              : (displayScore >= _config.matchThreshold
+                  ? 'Pose Matched ($displayScore%)'
+                  : 'Scanning Pose... ($displayScore%)');
+          frame = raw.copyWith(
+            score: _smoothedScore,
+            statusText: updatedStatus,
+          );
         } else {
           _smoothedScore = 0;
           frame = raw;
@@ -311,17 +319,15 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
   }
 
   // ---------------------------------------------------------------------------
-  // Auto shutter
+  // Auto Shutter (1.2s Fast Trigger)
   // ---------------------------------------------------------------------------
 
   void _handleMatching(PoseFrame frame) {
-    // Chỉ kích hoạt khi phát hiện toàn thân/nửa thân trên hợp lệ và điểm đạt chuẩn
     final matched = frame.hasPose &&
         !frame.needsFullBody &&
         frame.score >= _config.matchThreshold;
     _matchFrames = matched ? _matchFrames + 1 : 0;
 
-    // Nếu người dùng bước lại quá gần (needsFullBody) hoặc score tụt -> hủy đếm ngược ngay lập tức
     if (_countdownTimer != null &&
         (!frame.hasPose ||
             frame.needsFullBody ||
@@ -338,20 +344,13 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
   }
 
   void _startCountdown() {
-    setState(() => _countdown = _config.countdownSeconds > 0 ? _config.countdownSeconds : 1);
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      if (_countdown > 1) {
-        setState(() => _countdown--);
-      } else {
-        timer.cancel();
-        _countdownTimer = null;
-        setState(() => _countdown = 0);
-        _capture();
-      }
+    setState(() => _countdown = 1);
+    // Auto-Shutter: 1.2s (1200ms) lock-in
+    _countdownTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (!mounted) return;
+      _countdownTimer = null;
+      setState(() => _countdown = 0);
+      _capture();
     });
   }
 
@@ -362,7 +361,7 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
   }
 
   // ---------------------------------------------------------------------------
-  // Capture + save to Gallery
+  // Capture + Shutter Flash + Gallery Save
   // ---------------------------------------------------------------------------
 
   Future<void> _capture() async {
@@ -373,36 +372,32 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
     final score = _frame.value.score;
 
     try {
-      // Android: phai dung stream truoc khi chup de tranh treo camera.
+      // 1. Dừng image stream an toàn trước khi chụp ảnh
       if (controller.value.isStreamingImages) {
         await controller.stopImageStream();
+        await Future<void>.delayed(const Duration(milliseconds: 60));
       }
-      final XFile file = await controller.takePicture();
-      if (!mounted) return;
 
-      setState(() => _isShutterFlashed = true);
+      // 2. Chớp sáng màn trập (Shutter Flash 150ms)
+      if (mounted) setState(() => _isShutterFlashed = true);
+      final XFile file = await controller.takePicture();
+
       Future.delayed(const Duration(milliseconds: 150), () {
         if (mounted) setState(() => _isShutterFlashed = false);
       });
 
-      String? saveError;
-      try {
-        if (!await Gal.hasAccess(toAlbum: true)) {
-          await Gal.requestAccess(toAlbum: true);
-        }
-        await Gal.putImage(file.path, album: 'PoseNova AI');
-      } catch (e) {
-        saveError = e is GalException ? e.type.message : e.toString();
-      }
+      if (!mounted) return;
 
       await PoseCaptureProvider.instance.registerCapturedPhoto(
         filePath: file.path,
         poseMatchScore: score,
       );
-      if (!mounted) return;
-      await _showResultSheet(file.path, score, saveError);
+
+      // Hiển thị Modal Tạp chí Editorial
+      await _showResultSheet(file.path, score);
     } catch (e) {
       if (mounted) {
+        setState(() => _isShutterFlashed = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.ink,
@@ -416,96 +411,373 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
     } finally {
       _isCapturing = false;
       _matchFrames = 0;
-      _autoCooldownUntil = DateTime.now().add(const Duration(seconds: 4));
+      _autoCooldownUntil = DateTime.now().add(const Duration(seconds: 3));
       if (mounted) await _startStream();
     }
   }
 
-  Future<void> _showResultSheet(String path, double score, String? saveError) {
-    final saved = saveError == null;
+  // ---------------------------------------------------------------------------
+  // Modal Ảnh Kết Quả chuẩn Tạp Chí Editorial & Lưu ảnh đã lật gương
+  // ---------------------------------------------------------------------------
+
+  Future<void> _showResultSheet(String path, double score) {
+    final bool isFrontCamera = _camera?.lensDirection == CameraLensDirection.front;
+
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       isDismissible: false,
       enableDrag: false,
-      backgroundColor: const Color(0xFF221E1B),
+      backgroundColor: const Color(0xFF141211),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxHeight: MediaQuery.of(ctx).size.height * 0.5,
-                    ),
-                    child: Image.file(File(path), fit: BoxFit.contain),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Row(
+        bool isSaving = false;
+
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      saved ? Icons.check_circle : Icons.error_outline,
-                      color: saved ? AppColors.cyber : AppColors.rosePink,
+                    // Handle Bar
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        saved
-                            ? 'Đã lưu ảnh vào thư viện máy!'
-                            : 'Chưa lưu được vào thư viện: $saveError',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
+                    const SizedBox(height: 14),
+
+                    // Preview Card: RepaintBoundary bọc trong ClipRRect để hiển thị bo góc trên màn hình
+                    // nhưng xuất ảnh chụp thành phẩm vuông vức, sạch góc, không bị viền xám
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: RepaintBoundary(
+                        key: _previewRepaintKey,
+                        child: Container(
+                          color: Colors.black,
+                          child: Stack(
+                            children: [
+                              // Ảnh gốc (lật gương nếu chụp bằng Camera trước)
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxHeight: MediaQuery.of(ctx).size.height * 0.52,
+                                  minWidth: double.infinity,
+                                ),
+                                child: isFrontCamera
+                                    ? Transform.flip(
+                                        flipX: true,
+                                        child: Image.file(
+                                          File(path),
+                                          fit: BoxFit.cover,
+                                          width: double.infinity,
+                                        ),
+                                      )
+                                    : Image.file(
+                                        File(path),
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                      ),
+                              ),
+
+                              // Dải nhãn Editorial Magazine Watermark đè nhẹ ở góc dưới
+                              Positioned(
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.fromLTRB(16, 28, 16, 14),
+                                  decoration: const BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.transparent,
+                                        Color(0xE60A0A0A),
+                                        Color(0xF5000000),
+                                      ],
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              'POSENOVA ATELIER',
+                                              style: GoogleFonts.plusJakartaSans(
+                                                color: AppColors.sunshineYellow,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w900,
+                                                letterSpacing: 1.2,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Builder(
+                                              builder: (_) {
+                                                final rawTitle = _lookbook.title;
+                                                final titleParts = rawTitle.split('•');
+                                                final mainTitle = titleParts[0].trim().toUpperCase();
+                                                final seasonBadge = titleParts.length > 1
+                                                    ? titleParts[1].trim().toUpperCase()
+                                                    : 'AW26';
+
+                                                return Row(
+                                                  children: [
+                                                    Flexible(
+                                                      child: Text(
+                                                        mainTitle,
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis,
+                                                        style: GoogleFonts.plusJakartaSans(
+                                                          color: Colors.white,
+                                                          fontSize: 14.5,
+                                                          fontWeight: FontWeight.w900,
+                                                          letterSpacing: -0.3,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(0xFFE11D48),
+                                                        borderRadius: BorderRadius.circular(4),
+                                                      ),
+                                                      child: Text(
+                                                        seasonBadge,
+                                                        style: GoogleFonts.plusJakartaSans(
+                                                          color: Colors.white,
+                                                          fontSize: 9.5,
+                                                          fontWeight: FontWeight.w800,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              'COLLECTION 2026 • VIETNAM',
+                                              style: GoogleFonts.jetBrainsMono(
+                                                color: Colors.white60,
+                                                fontSize: 8.5,
+                                                fontWeight: FontWeight.w700,
+                                                letterSpacing: 0.8,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF10B981).withValues(alpha: 0.22),
+                                          borderRadius: BorderRadius.circular(999),
+                                          border: Border.all(
+                                            color: const Color(0xFF10B981),
+                                            width: 1.0,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'AI POSE MATCH: ${score.round()}%',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          color: const Color(0xFF34D399),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: 0.4,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
+                  ),
+
+                    const SizedBox(height: 18),
+
+                    // 2 Nút hành động: "Chụp lại" & "Hoàn tất & Lưu ảnh"
+                    Row(
+                      children: [
+                        // Nút 1: Chụp lại
+                        Expanded(
+                          flex: 1,
+                          child: GestureDetector(
+                            onTap: isSaving ? null : () => Navigator.of(ctx).pop(),
+                            child: Container(
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(color: Colors.white24, width: 1.0),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                'Chụp lại',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: Colors.white,
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+
+                        // Nút 2: Hoàn tất & Lưu ảnh
+                        Expanded(
+                          flex: 2,
+                          child: GestureDetector(
+                            onTap: isSaving
+                                ? null
+                                : () async {
+                                    setModalState(() => isSaving = true);
+                                    try {
+                                      final boundary = _previewRepaintKey.currentContext
+                                          ?.findRenderObject() as RenderRepaintBoundary?;
+                                      if (boundary != null) {
+                                        final ui.Image image =
+                                            await boundary.toImage(pixelRatio: 2.5);
+                                        final ByteData? byteData = await image.toByteData(
+                                          format: ui.ImageByteFormat.png,
+                                        );
+                                        if (byteData != null) {
+                                          final Uint8List pngBytes =
+                                              byteData.buffer.asUint8List();
+                                          if (!await Gal.hasAccess(toAlbum: true)) {
+                                            await Gal.requestAccess(toAlbum: true);
+                                          }
+                                          await Gal.putImageBytes(
+                                            pngBytes,
+                                            album: 'PoseNova AI',
+                                            name: 'PoseNova_${DateTime.now().millisecondsSinceEpoch}',
+                                          );
+                                        }
+                                      } else {
+                                        if (!await Gal.hasAccess(toAlbum: true)) {
+                                          await Gal.requestAccess(toAlbum: true);
+                                        }
+                                        await Gal.putImage(path, album: 'PoseNova AI');
+                                      }
+
+                                      if (mounted) {
+                                        Navigator.of(ctx).pop();
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            backgroundColor: const Color(0xFF0F172A),
+                                            behavior: SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(14),
+                                            ),
+                                            content: Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.check_circle,
+                                                  color: Color(0xFF10B981),
+                                                  size: 18,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Đã lưu bức ảnh phong cách Tạp chí vào Thư viện!',
+                                                    style: GoogleFonts.plusJakartaSans(
+                                                      color: Colors.white,
+                                                      fontWeight: FontWeight.w700,
+                                                      fontSize: 12.5,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            backgroundColor: AppColors.ink,
+                                            content: Text(
+                                              'Lỗi khi lưu ảnh: $e',
+                                              style: GoogleFonts.plusJakartaSans(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    } finally {
+                                      if (mounted) setModalState(() => isSaving = false);
+                                    }
+                                  },
+                            child: Container(
+                              height: 50,
+                              decoration: BoxDecoration(
+                                gradient: AppColors.primaryGradient,
+                                borderRadius: BorderRadius.circular(999),
+                                boxShadow: AppColors.buttonShadow,
+                              ),
+                              alignment: Alignment.center,
+                              child: isSaving
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2.2,
+                                      ),
+                                    )
+                                  : Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(
+                                          Icons.save_alt,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Hoàn tất & Lưu ảnh',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            color: Colors.white,
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Match Score: ${score.round()}%  |  Ảnh chỉ lưu trên máy, không tải lên cloud',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white70,
-                      fontSize: 11.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: () => Navigator.of(ctx).pop(),
-                  child: Container(
-                    height: 50,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(999),
-                      boxShadow: AppColors.buttonShadow,
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      'Chụp lại',
-                      style: GoogleFonts.plusJakartaSans(
-                        color: Colors.white,
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -521,237 +793,185 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
     super.dispose();
   }
 
-  // ---------------------------------------------------------------------------
-  // UI
-  // ---------------------------------------------------------------------------
-
-  Widget _buildCameraLayer() {
-    final controller = _controller;
-    if (_cameraReady && controller != null && controller.value.isInitialized) {
-      final preview = controller.value.previewSize;
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(26),
-        child: SizedBox.expand(
-          child: FittedBox(
-            fit: BoxFit.cover,
-            child: SizedBox(
-              // previewSize luon la landscape; man hinh dung portrait nen hoan doi.
-              width: preview?.height ?? 1,
-              height: preview?.width ?? 1,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  CameraPreview(controller),
-                  CustomPaint(painter: _PoseOverlayPainter(_frame)),
-                ],
-              ),
+  @override
+  Widget build(BuildContext context) {
+    if (!_poseSupported) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          title: const Text('AI Pose Camera'),
+          backgroundColor: Colors.black,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Text(
+              'Tính năng Camera AI hiện chỉ hỗ trợ trên thiết bị thật (Android / iOS).',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 14),
             ),
           ),
         ),
       );
     }
 
-    final message = _cameraError ??
-        (_poseSupported
-            ? 'Đang khởi động camera...'
-            : 'Camera AI chỉ hỗ trợ Android và iOS.');
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              _cameraError != null ? Icons.videocam_off : Icons.videocam,
-              color: Colors.white54,
-              size: 40,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 13),
-            ),
-            if (_cameraError != null) ...[
-              const SizedBox(height: 14),
-              GestureDetector(
-                onTap: _initCamera,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    'Thử lại',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12.5,
-                    ),
-                  ),
+    if (_cameraError != null) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, color: AppColors.rosePink, size: 48),
+                const SizedBox(height: 16),
+                Text(
+                  _cameraError!,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 14),
                 ),
-              ),
-            ],
-          ],
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => _initCamera(),
+                  child: const Text('Thử lại'),
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
-    );
-  }
+      );
+    }
 
-  @override
-  Widget build(BuildContext context) {
+    if (!_cameraReady || _controller == null) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.sunshineYellow),
+        ),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: const Color(0xFF181513),
+      backgroundColor: Colors.black,
       body: SafeArea(
-        child: SizedBox.expand(
+        child: TechnicalGridBackground(
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // 1. Central Camera Viewport with Pink-to-Yellow Aura Frame
-              Positioned.fill(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 70, 16, 120),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF221E1B),
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: Colors.transparent, width: 2.0),
-                    ),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        _buildCameraLayer(),
-                        CustomPaint(painter: _AuraBorderPainter()),
-                        const Positioned.fill(
-                          child: Padding(
-                            padding: EdgeInsets.all(24),
-                            child: _CornerBracketsOverlay(),
-                          ),
+              // 1. Camera Viewfinder
+              Center(
+                child: AspectRatio(
+                  aspectRatio: 1 / _controller!.value.aspectRatio,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CameraPreview(_controller!),
+
+                      // Khung Xương Mẫu Nét Đứt + Khung Xương Người Dùng
+                      CustomPaint(
+                        painter: _PoseOverlayPainter(
+                          frame: _frame,
+                          targetAngles: _currentTargetAngles(),
+                          lookbookTitle: _lookbook.title,
                         ),
-                        _buildStatusPill(),
-                        _buildScoreHud(),
-                      ],
-                    ),
+                      ),
+
+                      // 4 Góc ngắm đối xứng
+                      const _CornerBracketsOverlay(),
+
+                      // Viền sáng mềm chuyển sắc
+                      CustomPaint(painter: _AuraBorderPainter()),
+                    ],
                   ),
                 ),
               ),
 
-              // 2. Top Header HUD Bar
+              // 2. Header: Nút Thoát + Switch Camera
               Positioned(
                 top: 14,
                 left: 16,
                 right: 16,
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     GestureDetector(
                       onTap: _handleBack,
                       child: Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
+                          color: Colors.black.withValues(alpha: 0.65),
                           shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white24, width: 0.8),
                         ),
                         child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'AI Virtual Try-On',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: _switchCamera,
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white24, width: 0.8),
+                            ),
+                            child: const Icon(
+                              Icons.cameraswitch,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: _switchCamera,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        margin: const EdgeInsets.only(right: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.cameraswitch, color: Colors.white, size: 18),
-                      ),
-                    ),
-                    const BrutalistBadge(
-                      label: '30 FPS AI',
-                      backgroundColor: AppColors.sunshineYellow,
-                      isMonospace: false,
+                      ],
                     ),
                   ],
                 ),
               ),
 
-              // 3. Picture-in-Picture Target = anh cua Lookbook dang chon
+              // 3. Status Pill góc trên bên trái
+              _buildStatusPill(),
+
+              // 4. PIP Card Target Pose góc trên bên phải (Hỗ trợ chạm Phóng to / Thu nhỏ)
               Positioned(
-                top: 80,
-                right: 24,
-                child: ListenableBuilder(
-                  listenable: LookbookProvider.instance,
-                  builder: (context, _) => _buildTargetPip(_lookbook),
-                ),
+                top: 14,
+                right: 16,
+                child: _buildTargetPip(_lookbook),
               ),
 
-              // 4. Countdown Timer Banner
-              if (_countdown > 0)
-                Positioned(
-                  top: 220,
-                  left: 36,
-                  right: 36,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.bannerGradient,
-                      borderRadius: BorderRadius.circular(999),
-                      boxShadow: AppColors.chipShadow,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.timer, size: 16, color: AppColors.ink),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Giữ dáng trong $_countdown giây...',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              // 5. Score & Actionable Coaching Hint Bar góc dưới
+              _buildScoreHud(),
 
-              // 5. Bottom Controls
+              // 6. Nút Shutter tròn ở đáy màn hình
               Positioned(
-                bottom: 16,
-                left: 18,
-                right: 18,
-                child: GestureDetector(
-                  onTap: _capture,
-                  child: Opacity(
-                    opacity: (_cameraReady && !_isCapturing) ? 1 : 0.5,
+                bottom: 84,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: _isCapturing ? null : _capture,
                     child: Container(
-                      height: 52,
+                      height: 54,
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
                       decoration: BoxDecoration(
-                        gradient: AppColors.primaryGradient,
+                        gradient: _countdown > 0
+                            ? const LinearGradient(
+                                colors: [Color(0xFF10B981), Color(0xFF059669)],
+                              )
+                            : AppColors.primaryGradient,
                         borderRadius: BorderRadius.circular(999),
                         boxShadow: AppColors.buttonShadow,
                       ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(Icons.camera_alt, color: Colors.white, size: 20),
                           const SizedBox(width: 10),
                           Text(
                             _countdown > 0
-                                ? 'Chụp Ngay (Auto Shutter)'
+                                ? 'Đang Chụp 1.2s (Giữ yên dáng)...'
                                 : 'Chụp ảnh (Take a Picture)',
                             style: GoogleFonts.plusJakartaSans(
                               color: Colors.white,
@@ -767,8 +987,16 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
                 ),
               ),
 
-              // White Camera Flash effect
-              if (_isShutterFlashed) Positioned.fill(child: Container(color: Colors.white)),
+              // 7. Hiệu ứng Shutter Flash trắng mịn khi bắt dính khoảnh khắc
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: _isShutterFlashed ? 0.90 : 0.0,
+                    duration: const Duration(milliseconds: 150),
+                    child: Container(color: Colors.white),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -778,7 +1006,7 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
 
   Widget _buildStatusPill() {
     return Positioned(
-      top: 18,
+      top: 68,
       left: 18,
       right: _isTargetExpanded ? 205 : 145,
       child: Align(
@@ -791,13 +1019,13 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
                 frame.score >= _config.matchThreshold;
             final isWarning = frame.needsFullBody;
             final Color dotColor = matched
-                ? AppColors.sunshineYellow
-                : (isWarning ? AppColors.coralOrange : AppColors.rosePink);
+                ? const Color(0xFF10B981)
+                : (isWarning ? AppColors.coralOrange : AppColors.sunshineYellow);
 
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.65),
+                color: Colors.black.withValues(alpha: 0.70),
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(
                   color: isWarning
@@ -841,7 +1069,7 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
 
   Widget _buildScoreHud() {
     return Positioned(
-      bottom: 18,
+      bottom: 22,
       left: 18,
       right: 18,
       child: ValueListenableBuilder<PoseFrame>(
@@ -851,29 +1079,28 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
               !frame.needsFullBody &&
               frame.score >= _config.matchThreshold;
           final accent = matched
-              ? AppColors.sunshineYellow
-              : (frame.needsFullBody ? AppColors.coralOrange : AppColors.rosePink);
+              ? const Color(0xFF10B981)
+              : (frame.needsFullBody ? AppColors.coralOrange : AppColors.sunshineYellow);
 
           final String text;
           if (!frame.hasPose) {
-            text = 'Match Score: --  |  Diff: --';
-          } else if (frame.needsFullBody) {
-            text = 'Match Score: ${frame.score.round()}%  |  Lùi lại để thấy rõ thân trên';
+            text = 'Match Score: --  |  Đang tìm dáng người...';
           } else {
-            text =
-                'Match Score: ${frame.score.round()}%  |  Diff: ${frame.diffDegrees.round()}°';
+            text = 'Match Score: ${frame.score.round()}%  |  ${frame.coachingHint}';
           }
 
           return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.7),
+              color: Colors.black.withValues(alpha: 0.75),
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: accent, width: 1.0),
+              border: Border.all(color: accent, width: 1.2),
             ),
             child: Text(
               text,
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
@@ -887,10 +1114,11 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
   }
 
   Widget _buildTargetPip(PoseLookbook lookbook) {
-    final double targetWidth = _isTargetExpanded ? 180 : 118;
-    final double targetHeight = _isTargetExpanded ? 240 : 156;
+    final double targetWidth = _isTargetExpanded ? 185 : 115;
+    final double targetHeight = _isTargetExpanded ? 245 : 150;
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
         setState(() {
           _isTargetExpanded = !_isTargetExpanded;
@@ -1014,63 +1242,208 @@ class _PoseCameraScreenState extends State<PoseCameraScreen>
   }
 }
 
-/// Ve khung xuong tu cac landmark ML Kit that, trong he toa do cua CameraPreview.
+/// CustomPainter vẽ Khung Xương Mẫu Nét Đứt + Khung Xương Người Dùng (Per-Limb Color Feedback)
 class _PoseOverlayPainter extends CustomPainter {
   final ValueNotifier<PoseFrame> frame;
+  final Map<String, double> targetAngles;
+  final String lookbookTitle;
 
-  _PoseOverlayPainter(this.frame) : super(repaint: frame);
+  _PoseOverlayPainter({
+    required this.frame,
+    required this.targetAngles,
+    required this.lookbookTitle,
+  }) : super(repaint: frame);
+
+  void _drawDashedLine(
+    Canvas canvas,
+    Offset p1,
+    Offset p2,
+    Paint paint, {
+    double dashWidth = 7.0,
+    double dashSpace = 5.0,
+  }) {
+    final dx = p2.dx - p1.dx;
+    final dy = p2.dy - p1.dy;
+    final distance = math.sqrt(dx * dx + dy * dy);
+    if (distance <= 0) return;
+    final unitX = dx / distance;
+    final unitY = dy / distance;
+
+    double currentDist = 0.0;
+    while (currentDist < distance) {
+      final nextDist = math.min(currentDist + dashWidth, distance);
+      canvas.drawLine(
+        Offset(p1.dx + unitX * currentDist, p1.dy + unitY * currentDist),
+        Offset(p1.dx + unitX * nextDist, p1.dy + unitY * nextDist),
+        paint,
+      );
+      currentDist += dashWidth + dashSpace;
+    }
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
     final f = frame.value;
-    if (!f.hasPose || size.isEmpty) return;
-
-    final matched =
-        !f.needsFullBody && f.score >= PoseMatchingConfig.current.matchThreshold;
-    final color = matched
-        ? AppColors.sunshineYellow
-        : (f.needsFullBody ? AppColors.coralOrange : AppColors.rosePink);
-
-    final line = Paint()
-      ..color = color
-      ..strokeWidth = size.width * 0.008
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-    final dotFill = Paint()..color = Colors.white;
-    final dotRing = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.004;
 
     Offset? at(PoseLandmarkType t) {
       final o = f.points[t];
       return o == null ? null : Offset(o.dx * size.width, o.dy * size.height);
     }
 
+    final userLs = at(PoseLandmarkType.leftShoulder);
+    final userRs = at(PoseLandmarkType.rightShoulder);
+
+    // -------------------------------------------------------------------------
+    // 1. Vẽ Khung Xương Mẫu Nét Đứt (Ghost Guide Skeleton)
+    // -------------------------------------------------------------------------
+    final ghost = TargetGhostSkeleton.compute(
+      size: size,
+      targetAngles: targetAngles,
+      userLeftShoulder: userLs,
+      userRightShoulder: userRs,
+      lookbookTitle: lookbookTitle,
+    );
+
+    final ghostLinePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.45)
+      ..strokeWidth = 2.2
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final ghostJointPaint = Paint()
+      ..color = const Color(0xFFFDE68A).withValues(alpha: 0.75)
+      ..style = PaintingStyle.fill;
+
+    final ghostJointRing = Paint()
+      ..color = Colors.white.withValues(alpha: 0.8)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+
+    // Các đoạn xương nét đứt của khung mẫu
+    final ghostSegments = [
+      [ghost.leftShoulder, ghost.rightShoulder],
+      [ghost.leftShoulder, ghost.leftElbow],
+      [ghost.leftElbow, ghost.leftWrist],
+      [ghost.rightShoulder, ghost.rightElbow],
+      [ghost.rightElbow, ghost.rightWrist],
+      if (ghost.leftHip != null) [ghost.leftShoulder, ghost.leftHip!],
+      if (ghost.rightHip != null) [ghost.rightShoulder, ghost.rightHip!],
+    ];
+
+    for (final seg in ghostSegments) {
+      _drawDashedLine(canvas, seg[0], seg[1], ghostLinePaint);
+    }
+
+    // Vẽ đầu/cổ nối khung mẫu
+    final midGhostShoulder = Offset(
+      (ghost.leftShoulder.dx + ghost.rightShoulder.dx) * 0.5,
+      (ghost.leftShoulder.dy + ghost.rightShoulder.dy) * 0.5,
+    );
+    _drawDashedLine(canvas, ghost.nose, midGhostShoulder, ghostLinePaint);
+
+    // Các điểm khớp của khung mẫu
+    final ghostJoints = [
+      ghost.nose,
+      ghost.leftShoulder,
+      ghost.rightShoulder,
+      ghost.leftElbow,
+      ghost.rightElbow,
+      ghost.leftWrist,
+      ghost.rightWrist,
+      if (ghost.leftHip != null) ghost.leftHip!,
+      if (ghost.rightHip != null) ghost.rightHip!,
+    ];
+
+    final double ghostRadius = size.width * 0.012;
+    for (final j in ghostJoints) {
+      canvas.drawCircle(j, ghostRadius, ghostJointPaint);
+      canvas.drawCircle(j, ghostRadius, ghostJointRing);
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. Vẽ Khung Xương Người Dùng Thực Tế (Per-Limb Color Feedback)
+    // -------------------------------------------------------------------------
+    if (!f.hasPose) return;
+
+    final jointDiffs = f.jointDiffs;
+
+    Color colorForBone(PoseLandmarkType a, PoseLandmarkType b) {
+      if ((a == PoseLandmarkType.leftShoulder && b == PoseLandmarkType.leftElbow) ||
+          (a == PoseLandmarkType.leftElbow && b == PoseLandmarkType.leftShoulder)) {
+        final d = jointDiffs['leftShoulder'] ?? jointDiffs['leftArmFlare'] ?? 0.0;
+        return d <= 18.0 ? const Color(0xFF10B981) : const Color(0xFFF43F5E);
+      }
+      if ((a == PoseLandmarkType.leftElbow && b == PoseLandmarkType.leftWrist) ||
+          (a == PoseLandmarkType.leftWrist && b == PoseLandmarkType.leftElbow)) {
+        final d = jointDiffs['leftElbow'] ?? 0.0;
+        return d <= 18.0 ? const Color(0xFF10B981) : const Color(0xFFF43F5E);
+      }
+      if ((a == PoseLandmarkType.rightShoulder && b == PoseLandmarkType.rightElbow) ||
+          (a == PoseLandmarkType.rightElbow && b == PoseLandmarkType.rightShoulder)) {
+        final d = jointDiffs['rightShoulder'] ?? jointDiffs['rightArmFlare'] ?? 0.0;
+        return d <= 18.0 ? const Color(0xFF10B981) : const Color(0xFFF43F5E);
+      }
+      if ((a == PoseLandmarkType.rightElbow && b == PoseLandmarkType.rightWrist) ||
+          (a == PoseLandmarkType.rightWrist && b == PoseLandmarkType.rightElbow)) {
+        final d = jointDiffs['rightElbow'] ?? 0.0;
+        return d <= 18.0 ? const Color(0xFF10B981) : const Color(0xFFF43F5E);
+      }
+      if ((a == PoseLandmarkType.leftShoulder && b == PoseLandmarkType.rightShoulder) ||
+          (a == PoseLandmarkType.rightShoulder && b == PoseLandmarkType.leftShoulder)) {
+        final d = jointDiffs['headShoulderSpan'] ?? 0.0;
+        return d <= 18.0 ? const Color(0xFF10B981) : const Color(0xFFFBBF24);
+      }
+
+      // Các đoạn xương thân dưới
+      final hipDiff = jointDiffs['leftHip'] ?? jointDiffs['rightHip'] ?? 0.0;
+      return hipDiff <= 20.0 ? const Color(0xFF10B981) : const Color(0xFFF43F5E);
+    }
+
+    final dotFill = Paint()..color = Colors.white;
+
     for (final bone in MlKitPoseService.bones) {
       final a = at(bone[0]);
       final b = at(bone[1]);
-      if (a != null && b != null) canvas.drawLine(a, b, line);
+      if (a != null && b != null) {
+        final boneColor = colorForBone(bone[0], bone[1]);
+        final bonePaint = Paint()
+          ..color = boneColor
+          ..strokeWidth = size.width * 0.010
+          ..strokeCap = StrokeCap.round
+          ..style = PaintingStyle.stroke;
+
+        canvas.drawLine(a, b, bonePaint);
+      }
     }
 
     final nose = at(PoseLandmarkType.nose);
     final ls = at(PoseLandmarkType.leftShoulder);
     final rs = at(PoseLandmarkType.rightShoulder);
     if (nose != null && ls != null && rs != null) {
-      canvas.drawLine(nose, Offset((ls.dx + rs.dx) / 2, (ls.dy + rs.dy) / 2), line);
+      final neckLine = Paint()
+        ..color = const Color(0xFF10B981)
+        ..strokeWidth = size.width * 0.008
+        ..strokeCap = StrokeCap.round
+        ..style = PaintingStyle.stroke;
+      canvas.drawLine(nose, Offset((ls.dx + rs.dx) / 2, (ls.dy + rs.dy) / 2), neckLine);
     }
 
-    final radius = size.width * 0.012;
+    final radius = size.width * 0.013;
     for (final entry in f.points.entries) {
       final p = Offset(entry.value.dx * size.width, entry.value.dy * size.height);
+      final ringPaint = Paint()
+        ..color = f.score >= 85.0 ? const Color(0xFF10B981) : AppColors.sunshineYellow
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = size.width * 0.005;
+
       canvas.drawCircle(p, radius, dotFill);
-      canvas.drawCircle(p, radius, dotRing);
+      canvas.drawCircle(p, radius, ringPaint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _PoseOverlayPainter oldDelegate) =>
-      oldDelegate.frame != frame;
+  bool shouldRepaint(covariant _PoseOverlayPainter oldDelegate) => true;
 }
 
 /// 4 Corner Brackets Overlay: [  ]
@@ -1096,19 +1469,15 @@ class _CornerBracketsPainter extends CustomPainter {
 
     const double arm = 22.0;
 
-    // Top-Left
     canvas.drawLine(const Offset(0, 0), const Offset(arm, 0), paint);
     canvas.drawLine(const Offset(0, 0), const Offset(0, arm), paint);
 
-    // Top-Right
     canvas.drawLine(Offset(size.width, 0), Offset(size.width - arm, 0), paint);
     canvas.drawLine(Offset(size.width, 0), Offset(size.width, arm), paint);
 
-    // Bottom-Left
     canvas.drawLine(Offset(0, size.height), Offset(arm, size.height), paint);
     canvas.drawLine(Offset(0, size.height), Offset(0, size.height - arm), paint);
 
-    // Bottom-Right
     canvas.drawLine(Offset(size.width, size.height), Offset(size.width - arm, size.height), paint);
     canvas.drawLine(Offset(size.width, size.height), Offset(size.width, size.height - arm), paint);
   }

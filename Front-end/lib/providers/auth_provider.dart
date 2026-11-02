@@ -157,7 +157,7 @@ class AuthProvider extends ChangeNotifier {
         body: {
           'fullName': fullName.trim(),
           'email': email.trim().toLowerCase(),
-          'password': password,
+          'password': password.trim(),
           'role': normalizedRole,
           if (heightCm != null && heightCm > 0) 'heightCm': heightCm,
           if (weightKg != null && weightKg > 0) 'weightKg': weightKg,
@@ -227,8 +227,8 @@ class AuthProvider extends ChangeNotifier {
       final response = await ApiClient.instance.post(
         '/auth/login',
         body: {
-          'email': email.trim(),
-          'password': password,
+          'email': email.trim().toLowerCase(),
+          'password': password.trim(),
         },
       );
       final data = response['data'] as Map<String, dynamic>? ?? {};

@@ -36,6 +36,12 @@ export function globalErrorHandler(
     return;
   }
 
+  // Handle malformed JSON body from client requests gracefully
+  if (err instanceof SyntaxError && 'body' in err) {
+    sendError(res, 'Invalid JSON body payload received', 400);
+    return;
+  }
+
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === 'P2002') {
       sendError(res, 'Duplicate resource conflict (Unique constraint failed)', 409, {

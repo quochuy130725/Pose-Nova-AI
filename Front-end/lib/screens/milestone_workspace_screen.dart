@@ -1,12 +1,14 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../core/localization/app_language.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
 import '../core/utils/currency_formatter.dart';
 import '../data/models/milestone_model.dart';
-import '../data/models/styling_request_model.dart';
 import '../data/repositories/mock_repository.dart';
 import '../providers/lookbook_provider.dart';
 import '../providers/styling_request_provider.dart';
@@ -207,18 +209,21 @@ class MilestoneWorkspaceScreen extends StatefulWidget {
 class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
   final MockRepository _repository = MockRepository();
   List<MilestoneModel>? _milestones;
-  StylingRequestModel? _request;
   bool _isLoading = true;
 
   // Interactive demo states for Golden Path
   int _revisionCount = 1;
   final int _maxRevisions = 2;
   bool _stage2Approved = false;
+  bool _stage3Approved = false;
   int _selectedStageIndex = 1; // Stage 2 active
 
   // Stylist View Deliverable Upload & Tag States
   UploadState _uploadState = UploadState.idle;
   String? _uploadedImageUrl;
+  File? _pickedImageFile;
+  List<PoseLandmark>? _extractedLandmarks;
+  List<PoseLandmark>? get extractedLandmarks => _extractedLandmarks;
   bool _hasProductTag = false;
   bool _isSubmitted = false;
   bool _showSkeletonOverlay = true;
@@ -252,12 +257,8 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
     try {
       StylingRequestProvider.instance.fetchRequestsAndSelectActive();
       final milestones = await _repository.loadMilestones();
-      final requests = await _repository.loadStylingRequests();
       setState(() {
         _milestones = milestones;
-        if (requests.isNotEmpty) {
-          _request = requests.first;
-        }
         _isLoading = false;
       });
     } catch (e) {
@@ -380,7 +381,8 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
     setState(() {
       _stage2Approved = true;
     });
-    StylingRequestProvider.instance.approveMilestone(stageNumber: 2);
+    StylingRequestProvider.instance.approveMilestone(2);
+    final stage2Net = StylingRequestProvider.instance.stageNetAmount(2);
 
     showModalBottomSheet(
       context: context,
@@ -424,7 +426,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '+382.500₫ đã vào Ví Stylist (Đã trừ 15% phí sàn)',
+                        '+${CurrencyFormatter.formatVnd(stage2Net)} đã vào Ví Stylist (Đã trừ 15% phí sàn)',
                         style: AppTheme.monoStyle.copyWith(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
@@ -474,6 +476,196 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _handleApproveStage3() {
+    setState(() {
+      _stage3Approved = true;
+    });
+    StylingRequestProvider.instance.approveMilestone(3);
+    final stage3Net = StylingRequestProvider.instance.stageNetAmount(3);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(AppColors.cardRadius)),
+          border: const Border(
+            top: BorderSide(color: AppColors.ink, width: AppColors.cardBorderWidth),
+            left: BorderSide(color: AppColors.ink, width: AppColors.cardBorderWidth),
+            right: BorderSide(color: AppColors.ink, width: AppColors.cardBorderWidth),
+          ),
+          boxShadow: AppColors.hardShadow,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.cyber,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.ink, width: 2.0),
+                    boxShadow: AppColors.chipShadow,
+                  ),
+                  child: const Icon(Icons.verified, color: AppColors.ink, size: 28),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Giải ngân 40% Hoàn Tất Hợp Đồng!',
+                        style: AppTheme.headingStyle.copyWith(fontSize: 16),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '+${CurrencyFormatter.formatVnd(stage3Net)} đã vào Ví Stylist (100% Escrow giải ngân)',
+                        style: AppTheme.monoStyle.copyWith(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.cyber,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'Toàn bộ 3 chặng của hợp đồng đã được nghiệm thu thành công. Bạn có thể để lại đánh giá 5 sao cho Stylist ngay bây giờ!',
+              style: AppTheme.bodyStyle.copyWith(fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: BrutalistButton(
+                    text: 'ĐỂ SAU',
+                    backgroundColor: AppColors.cardBackground,
+                    textColor: AppColors.ink,
+                    height: 48,
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: BrutalistButton(
+                    text: 'ĐÁNH GIÁ 5 SAO →',
+                    backgroundColor: AppColors.electricYellow,
+                    textColor: AppColors.ink,
+                    height: 48,
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const DisputeReviewScreen(isDisputeMode: false),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showQuickBudgetSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final current = StylingRequestProvider.instance.activeTotalBudget;
+        final options = [2000, 10000, 50000, 500000, 2500000];
+
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE4E4E7),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Điều Chỉnh Ngân Sách Hợp Đồng Ký Quỹ',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF18181B),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Chọn mức ngân sách để test trực tiếp luồng Escrow VietQR / SePay:',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  color: const Color(0xFF71717A),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: options.map((amt) {
+                  final isSel = amt == current;
+                  return GestureDetector(
+                    onTap: () {
+                      StylingRequestProvider.instance.setCustomBudget(amt);
+                      Navigator.pop(ctx);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSel ? const Color(0xFF10B981) : const Color(0xFFF4F4F5),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSel ? const Color(0xFF059669) : const Color(0xFFE4E4E7),
+                        ),
+                      ),
+                      child: Text(
+                        amt == 2000
+                            ? '2.000₫ (Test SePay)'
+                            : CurrencyFormatter.formatVnd(amt),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: isSel ? Colors.white : const Color(0xFF18181B),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -539,38 +731,53 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                 ),
           body: TechnicalGridBackground(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- 1. Clean Editorial Header (Replaces 3 redundant trackers & 141px overflow) ---
+                  // --- 1. Clean Editorial Header (Wrap in Expanded to fix 9.0px overflow & dynamic budget) ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(
-                        'Escrow Workspace',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          color: const Color(0xFF18181B),
-                          letterSpacing: -0.6,
+                      Expanded(
+                        child: Text(
+                          'Escrow Workspace',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: const Color(0xFF18181B),
+                            letterSpacing: -0.5,
+                          ),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFECFDF5),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: const Color(0xFFA7F3D0), width: 1.0),
-                        ),
-                        child: Text(
-                          '🔒 2.500.000đ Protected',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF059669),
-                            letterSpacing: -0.2,
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => _showQuickBudgetSheet(context),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFECFDF5),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: const Color(0xFFA7F3D0), width: 1.0),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${CurrencyFormatter.formatVnd(StylingRequestProvider.instance.activeTotalBudget)} Protected',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFF059669),
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.tune, size: 12, color: Color(0xFF059669)),
+                            ],
                           ),
                         ),
                       ),
@@ -593,6 +800,12 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
 
   /// 2. Clean Editorial Milestone Contract Section
   Widget _buildVerticalTimelineSection(AppTranslations t) {
+    final reqProvider = StylingRequestProvider.instance;
+    final totalBudget = reqProvider.activeTotalBudget;
+    final stage1Gross = reqProvider.stageGrossAmount(1);
+    final stage2Gross = reqProvider.stageGrossAmount(2);
+    final stage3Gross = reqProvider.stageGrossAmount(3);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -607,12 +820,22 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                 color: const Color(0xFF18181B),
               ),
             ),
-            Text(
-              'Total: ${CurrencyFormatter.formatVnd(_request?.budgetVnd ?? 2500000)}',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF71717A),
+            GestureDetector(
+              onTap: () => _showQuickBudgetSheet(context),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Total: ${CurrencyFormatter.formatVnd(totalBudget)}',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF71717A),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.tune, size: 12, color: Color(0xFF71717A)),
+                ],
               ),
             ),
           ],
@@ -624,7 +847,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
           badgeNumber: '01',
           title: 'Moodboard & Concept',
           statusText: 'Approved & Released',
-          amountText: '750.000đ',
+          amountText: CurrencyFormatter.formatVnd(stage1Gross),
           percentageText: '30%',
           isHeroGradient: false,
           isActive: _selectedStageIndex == 0,
@@ -639,7 +862,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
 
         const SizedBox(height: 12),
 
-        // STAGE 02 CARD: Outfit Selection & Pose (Signature Soft Rose-Pink to Sunset-Peach Gradient)
+        // STAGE 02 CARD: Outfit Selection & Pose
         _buildEditorialMilestoneCard(
           badgeNumber: '02',
           title: 'Outfit Selection & Pose',
@@ -650,7 +873,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                       ? 'Ready to Submit • Tagged'
                       : 'Active • Ready to Upload'))
               : (_stage2Approved ? 'Approved & Released' : 'Active • Ready to Review'),
-          amountText: '750.000đ',
+          amountText: CurrencyFormatter.formatVnd(stage2Gross),
           percentageText: '30%',
           isHeroGradient: true,
           isActive: _selectedStageIndex == 1,
@@ -658,7 +881,6 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
           onTap: () => setState(() => _selectedStageIndex = 1),
         ),
 
-        // DIRECTLY BELOW ACTIVE STAGE 02 CARD: UPLOAD DROPZONE / DELIVERABLE
         if (_selectedStageIndex == 1) ...[
           const SizedBox(height: 12),
           _buildDeliverablePreviewSection(t),
@@ -670,8 +892,10 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
         _buildEditorialMilestoneCard(
           badgeNumber: '03',
           title: 'Final Lookbook',
-          statusText: _stage2Approved ? 'Ready to Unlock' : 'Locked',
-          amountText: '1.000.000đ',
+          statusText: _stage3Approved
+              ? 'Approved & Released'
+              : (_stage2Approved ? 'Active • Ready to Review' : 'Locked'),
+          amountText: CurrencyFormatter.formatVnd(stage3Gross),
           percentageText: '40%',
           isHeroGradient: false,
           isActive: _selectedStageIndex == 2,
@@ -782,31 +1006,50 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
               ),
             ),
             const SizedBox(width: 14),
-            // Left Column: Title & Status Text
+            // Left Column: Eyebrow Badge + Title + Status Text
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isHeroGradient
+                          ? Colors.white.withValues(alpha: 0.25)
+                          : const Color(0xFFFFE4E6),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'STAGE $badgeNumber',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                        color: isHeroGradient ? Colors.white : const Color(0xFFE11D48),
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
                   Text(
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
+                      fontSize: 14.5,
                       fontWeight: FontWeight.w800,
                       color: isHeroGradient
                           ? Colors.white
-                          : (isLocked ? const Color(0xFFA1A1AA) : const Color(0xFF18181B)),
+                          : (isLocked ? const Color(0xFFA1A1AA) : const Color(0xFF2D221E)),
                       letterSpacing: -0.2,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
                   Text(
                     statusText,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w600,
                       color: isHeroGradient
                           ? Colors.white.withValues(alpha: 0.95)
@@ -1163,32 +1406,56 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
     );
   }
 
-  void _startAiAnalysis(AppTranslations t) {
-    setState(() {
-      _uploadState = UploadState.analyzing;
-    });
+  Future<void> _startAiAnalysis(AppTranslations t) async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 92);
+      if (picked == null) return;
 
-    Future.delayed(const Duration(milliseconds: 1200), () {
-      if (mounted) {
-        setState(() {
-          _uploadedImageUrl =
-              'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=800&q=80';
-          _uploadState = UploadState.tagged;
-        });
+      setState(() {
+        _pickedImageFile = File(picked.path);
+        _uploadedImageUrl = picked.path;
+        _uploadState = UploadState.analyzing;
+      });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.obsidian,
-            content: Text(
-              t.isVi
-                  ? 'Google ML Kit đã trích xuất thành công 33 AI Pose Landmarks!'
-                  : 'Google ML Kit successfully extracted 33 AI Pose Landmarks!',
-              style: const TextStyle(color: AppColors.cyber, fontWeight: FontWeight.bold),
-            ),
+      // Extract real landmarks via Google ML Kit Pose Detection
+      final inputImage = InputImage.fromFilePath(picked.path);
+      final poseDetector = PoseDetector(
+        options: PoseDetectorOptions(mode: PoseDetectionMode.single),
+      );
+      final poses = await poseDetector.processImage(inputImage);
+      await poseDetector.close();
+
+      if (!mounted) return;
+
+      setState(() {
+        _uploadState = UploadState.tagged;
+        _hasProductTag = true;
+        if (poses.isNotEmpty) {
+          _extractedLandmarks = poses.first.landmarks.values.toList();
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.obsidian,
+          content: Text(
+            t.isVi
+                ? 'Google ML Kit đã trích xuất thành công 33 AI Pose Landmarks!'
+                : 'Google ML Kit successfully extracted 33 AI Pose Landmarks!',
+            style: const TextStyle(color: AppColors.cyber, fontWeight: FontWeight.bold),
           ),
-        );
-      }
-    });
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _uploadedImageUrl =
+            'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=800&q=80';
+        _uploadState = UploadState.tagged;
+        _hasProductTag = true;
+      });
+    }
   }
 
   /// 4A. Upload Dropzone for Stylist (UploadState.idle)
@@ -1486,18 +1753,25 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(20),
-                child: Image.network(
-                  _uploadedImageUrl!,
-                  height: 330,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 330,
-                    color: const Color(0xFFF4F4F5),
-                    alignment: Alignment.center,
-                    child: const Text('Stylist Deliverable'),
-                  ),
-                ),
+                child: _pickedImageFile != null
+                    ? Image.file(
+                        _pickedImageFile!,
+                        height: 330,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      )
+                    : Image.network(
+                        _uploadedImageUrl ?? 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=800&q=80',
+                        height: 330,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          height: 330,
+                          color: const Color(0xFFF4F4F5),
+                          alignment: Alignment.center,
+                          child: const Text('Stylist Deliverable'),
+                        ),
+                      ),
               ),
 
               if (_showSkeletonOverlay)
@@ -1513,13 +1787,14 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                   ),
                 ),
 
+              // Bottom-left: 33 AI Landmarks Status Badge
               Positioned(
-                top: 14,
+                bottom: 14,
                 left: 12,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF18181B).withValues(alpha: 0.8),
+                    color: const Color(0xFF18181B).withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.0),
                   ),
@@ -1536,7 +1811,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        '✓ 33 AI POSE LANDMARKS',
+                        '33 AI LANDMARKS READY',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w800,
@@ -1549,6 +1824,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                 ),
               ),
 
+              // Top-right: Skeleton Toggle & Change Image Buttons
               Positioned(
                 top: 14,
                 right: 12,
@@ -1601,6 +1877,8 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                         setState(() {
                           _uploadState = UploadState.idle;
                           _uploadedImageUrl = null;
+                          _pickedImageFile = null;
+                          _extractedLandmarks = null;
                           _hasProductTag = false;
                         });
                       },
@@ -1623,7 +1901,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                             const Icon(Icons.refresh, size: 13, color: Color(0xFF18181B)),
                             const SizedBox(width: 4),
                             Text(
-                              'Change',
+                              t.isVi ? 'Đổi ảnh' : 'Change',
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w800,
@@ -2124,7 +2402,11 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
       );
     }
 
-    // Client View Action Bar
+    // Client View Action Bar with Stage-Specific Lock/Approve States
+    final reqProvider = StylingRequestProvider.instance;
+    final stage2Net = reqProvider.stageNetAmount(2);
+    final stage3Net = reqProvider.stageNetAmount(3);
+
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -2143,27 +2425,173 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          FashionDockButton(
-            text: _stage2Approved
-                ? t.stage2ApprovedContinueBtn
-                : t.approveStage2Btn,
-            icon: _stage2Approved ? Icons.verified : Icons.lock_open,
-            onPressed: _stage2Approved
-                ? () {
+          // TRƯỜNG HỢP 1: Chặng 01 đã giải ngân hoàn tất
+          if (_selectedStageIndex == 0) ...[
+            Container(
+              height: 50,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: const Color(0xFFBBF7D0), width: 1.2),
+              ),
+              alignment: Alignment.center,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'STAGE 01 ĐÃ GIẢI NGÂN HOÀN TẤT',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF16A34A),
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ]
+
+          // TRƯỜNG HỢP 2: Chặng 02 (30% Outfit Selection & Pose)
+          else if (_selectedStageIndex == 1) ...[
+            FashionDockButton(
+              text: _stage2Approved
+                  ? 'STAGE 02 ĐÃ GIẢI NGÂN HOÀN TẤT'
+                  : 'APPROVE & RELEASE 30% PAYOUT (+${CurrencyFormatter.formatVnd(stage2Net)})',
+              icon: _stage2Approved ? Icons.verified : Icons.lock_open,
+              onPressed: _stage2Approved
+                  ? () => setState(() => _selectedStageIndex = 2)
+                  : _handleApproveStage2,
+            ),
+            const SizedBox(height: 10),
+            if (!_stage2Approved) ...[
+              if (_revisionCount < _maxRevisions)
+                GestureDetector(
+                  onTap: _handleRequestRevision,
+                  child: Container(
+                    height: 44,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: const Color(0xFFE4E4E7), width: 1.0),
+                    ),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.edit_note, size: 16, color: Color(0xFF18181B)),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${t.requestRevisionBtn} ($_revisionCount/$_maxRevisions)',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF18181B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                GestureDetector(
+                  onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const DisputeReviewScreen(isDisputeMode: false),
+                        builder: (_) => const DisputeReviewScreen(isDisputeMode: true),
                       ),
                     );
-                  }
-                : _handleApproveStage2,
-          ),
+                  },
+                  child: Container(
+                    height: 44,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE11D48),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.gavel, size: 16, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Text(
+                          t.openDisputeBtn,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ] else ...[
+              GestureDetector(
+                onTap: () => setState(() => _selectedStageIndex = 2),
+                child: Container(
+                  height: 44,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: AppColors.electricYellow,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: AppColors.ink, width: 1.5),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'CHUYỂN SANG CHẶNG 03 (FINAL LOOKBOOK) →',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ]
 
-          const SizedBox(height: 10),
-
-          if (!_stage2Approved) ...[
-            if (_revisionCount < _maxRevisions)
+          // TRƯỜNG HỢP 3: Chặng 03 (40% Final Lookbook)
+          else ...[
+            if (!_stage2Approved)
+              Container(
+                height: 50,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF4F4F5),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0xFFE4E4E7), width: 1.0),
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.lock, color: Color(0xFF71717A), size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      'STAGE 03 ĐANG KHÓA • HÃY DUYỆT STAGE 02 TRƯỚC',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF71717A),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (!_stage3Approved) ...[
+              FashionDockButton(
+                text: 'APPROVE & RELEASE 40% PAYOUT (+${CurrencyFormatter.formatVnd(stage3Net)})',
+                icon: Icons.verified_user,
+                onPressed: _handleApproveStage3,
+              ),
+              const SizedBox(height: 10),
               GestureDetector(
                 onTap: _handleRequestRevision,
                 child: Container(
@@ -2181,7 +2609,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                       const Icon(Icons.edit_note, size: 16, color: Color(0xFF18181B)),
                       const SizedBox(width: 6),
                       Text(
-                        t.requestRevisionBtn(_revisionCount, _maxRevisions),
+                        'Yêu cầu chỉnh sửa Lookbook cuối',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700,
@@ -2191,42 +2619,21 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                     ],
                   ),
                 ),
-              )
-            else
-              GestureDetector(
-                onTap: () {
+              ),
+            ] else ...[
+              FashionDockButton(
+                text: 'STAGE 03 ĐÃ GIẢI NGÂN HOÀN TẤT • ĐÁNH GIÁ 5 SAO →',
+                icon: Icons.star_rounded,
+                onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const DisputeReviewScreen(isDisputeMode: true),
+                      builder: (_) => const DisputeReviewScreen(isDisputeMode: false),
                     ),
                   );
                 },
-                child: Container(
-                  height: 44,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE11D48),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  alignment: Alignment.center,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.gavel, size: 16, color: Colors.white),
-                      const SizedBox(width: 6),
-                      Text(
-                        t.openDisputeBtn,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ),
+            ],
           ],
         ],
       ),

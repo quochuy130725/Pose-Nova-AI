@@ -1059,49 +1059,106 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    item['title'] as String,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
-                      letterSpacing: -0.3,
-                    ),
+                  Builder(
+                    builder: (_) {
+                      final rawTitle = item['title'] as String? ?? '';
+                      final titleParts = rawTitle.split('•');
+                      final mainTitle = titleParts[0].trim();
+                      final seasonBadge = titleParts.length > 1 ? titleParts[1].trim() : 'AW26';
+
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              mainTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.ink,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFE4E6),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              seasonBadge,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFFE11D48),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 6),
-                  // Creator & Affiliate Items row: Avatar + "Maya Trần • 3 Items" (12px muted grey)
-                  Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(999),
-                        child: Image.network(
-                          item['stylistAvatar'] as String,
-                          width: 16,
-                          height: 16,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            width: 16,
-                            height: 16,
-                            color: AppColors.pastelFlamingo,
+                  // Creator & Affiliate Items row: Avatar + Stylist name + Items pill (No •)
+                  Builder(
+                    builder: (_) {
+                      final rawCreator = item['creatorInfo'] as String? ?? 'Maya Trần • 3 Items';
+                      final creatorParts = rawCreator.split('•');
+                      final stylistName = creatorParts[0].trim();
+                      final itemsCount = creatorParts.length > 1 ? creatorParts[1].trim() : '3 Items';
+
+                      return Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: Image.network(
+                              item['stylistAvatar'] as String,
+                              width: 16,
+                              height: 16,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                width: 16,
+                                height: 16,
+                                color: AppColors.pastelFlamingo,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          item['creatorInfo'] as String? ?? 'Maya Trần • 3 Items',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textMuted,
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              stylistName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF4F4F5),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(color: const Color(0xFFE4E4E7), width: 0.8),
+                            ),
+                            child: Text(
+                              itemsCount,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
 

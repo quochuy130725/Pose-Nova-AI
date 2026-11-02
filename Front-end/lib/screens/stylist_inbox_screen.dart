@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../core/localization/app_language.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
+import '../core/localization/app_language.dart';
+import '../core/utils/currency_formatter.dart';
 import '../providers/styling_request_provider.dart';
 import '../widgets/brutalist_badge.dart';
-import '../widgets/fashion_dock_button.dart';
+import '../widgets/language_switch_pill.dart';
 import '../widgets/technical_grid_background.dart';
+import 'escrow_checkout_screen.dart';
 import 'milestone_workspace_screen.dart';
 
-/// Screen 04: Stylist Inbox & Gemini AI Co-pilot
-/// Fully overhauled to "Street-Zine Neo-Pop" aesthetic
-class StylistInboxScreen extends StatelessWidget {
+class StylistInboxScreen extends StatefulWidget {
   final bool embeddedInShell;
-  final ValueChanged<int>? onNavigateToTab;
+  final void Function(int)? onNavigateToTab;
 
   const StylistInboxScreen({
     super.key,
@@ -22,675 +22,395 @@ class StylistInboxScreen extends StatelessWidget {
   });
 
   @override
+  State<StylistInboxScreen> createState() => _StylistInboxScreenState();
+}
+
+class _StylistInboxScreenState extends State<StylistInboxScreen> {
+  LocaleController get l => LocaleController.instance;
+
+  final TextEditingController _stage1NotesController = TextEditingController(
+    text:
+        'Bản thảo Stage 1 (30%): Đề xuất áo Blazer Oversized Đen nhám khoác ngoài Corset Lụa Bạc tạo đường eo thon gọn, kết hợp quần suông cạp cao kéo dài chân. Phù hợp sự kiện Tech Fashion Show.',
+  );
+
+  bool _isOrderAccepted = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      StylingRequestProvider.instance.fetchRequests();
+    });
+  }
+
+  @override
+  void dispose() {
+    _stage1NotesController.dispose();
+    super.dispose();
+  }
+
+  Color _parseHexColor(String hex) {
+    final cleaned = hex.replaceAll('#', '').trim();
+    if (cleaned.length == 6) {
+      return Color(int.parse('FF$cleaned', radix: 16));
+    }
+    return const Color(0xFF1A1A1A);
+  }
+
+  void _acceptAndDeliverStage1() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.ink,
+        content: Text(
+          AppLanguageController.instance.isEnglish
+              ? 'Submitted Stage 1 (30%) Deliverable to Escrow Workspace!'
+              : 'Đã nộp sản phẩm Chặng 1 (30%) lên Không gian Ký quỹ!',
+          style: AppTheme.monoStyle.copyWith(color: AppColors.acid, fontSize: 12),
+        ),
+      ),
+    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const MilestoneWorkspaceScreen(isStylistView: true),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final l = AppLanguageController.instance;
     return ListenableBuilder(
-      listenable: Listenable.merge([
-        AppLanguageController.instance,
-        StylingRequestProvider.instance,
-      ]),
+      listenable: StylingRequestProvider.instance,
       builder: (context, _) {
-        final t = AppLanguageController.instance.t;
-        final activeCode = StylingRequestProvider.instance.activeRequestDisplayCode;
+        final requestProvider = StylingRequestProvider.instance;
+        final String activeCode = requestProvider.activeOrderCode;
+        final int totalBudget = requestProvider.activeTotalBudget;
+        final int netTotal = requestProvider.activeNetPayout;
+        final int feeTotal = requestProvider.activePlatformFee;
+        final int stage1Net = requestProvider.stageNetAmount(1);
+        final int stage2Net = requestProvider.stageNetAmount(2);
+        final int stage3Net = requestProvider.stageNetAmount(3);
+        final String briefText = requestProvider.activeBriefText;
+        final String vibeText = requestProvider.activeVibe;
+        final List<String> paletteHex = requestProvider.activePaletteHex;
 
         return Scaffold(
-          backgroundColor: AppColors.canvas,
-          appBar: embeddedInShell
+          backgroundColor: AppColors.background,
+          appBar: widget.embeddedInShell
               ? null
               : AppBar(
-                  automaticallyImplyLeading: true,
-                  titleSpacing: 0,
                   backgroundColor: Colors.transparent,
                   elevation: 0,
-                  title: Text(
-                    'Stylist Studio',
-                    style: AppTheme.titleStyle.copyWith(fontSize: 18),
+                  scrolledUnderElevation: 0,
+                  title: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l.isEnglish ? 'Client Styling Orders' : 'Đơn Phối Đồ Khách Đặt',
+                        style: AppTheme.headingStyle.copyWith(fontSize: 17),
+                      ),
+                      Text(
+                        l.isEnglish
+                            ? '85% Net Payout · 3-Stage Deliverable Submission'
+                            : 'Thực nhận 85% Net · Nộp bàn giao 3 chặng',
+                        style: AppTheme.monoStyle.copyWith(
+                          fontSize: 10,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
                   ),
-                  actions: const [
+                  actions: [
+                    const Padding(
+                      padding: EdgeInsets.only(right: 6.0),
+                      child: LanguageSwitchPill(compact: true),
+                    ),
                     Padding(
-                      padding: EdgeInsets.only(right: 14.0),
+                      padding: const EdgeInsets.only(right: 14.0),
                       child: BrutalistBadge(
-                        label: 'INBOX · ACTIVE',
-                        backgroundColor: AppColors.cyber,
+                        label: activeCode,
+                        backgroundColor: AppColors.sunshineYellowLight,
+                        textColor: AppColors.ink,
                         isMonospace: true,
                       ),
                     ),
                   ],
                 ),
           body: TechnicalGridBackground(
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, embeddedInShell ? 96 : 32),
+            child: Column(
               children: [
-                // Top Header Section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            gradient: AppColors.primaryGradient,
-                            borderRadius: BorderRadius.circular(999),
-                            boxShadow: AppColors.buttonShadow,
-                          ),
-                          child: Text(
-                            'New Styling Request',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                            ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                    children: [
+                      if (widget.embeddedInShell)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0, top: 4.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      l.isEnglish ? 'Client Order' : 'Đơn Hàng Khách Đặt',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.ink,
+                                        letterSpacing: -0.6,
+                                      ),
+                                    ),
+                                    Text(
+                                      l.isEnglish
+                                          ? 'Manage client briefs & Gemini Co-pilot'
+                                          : 'Quản lý yêu cầu phối đồ & Gemini Co-pilot',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              BrutalistBadge(
+                                label: activeCode,
+                                backgroundColor: AppColors.sunshineYellowLight,
+                                textColor: AppColors.ink,
+                                isMonospace: true,
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Client Order',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.petrol,
-                            letterSpacing: -0.6,
-                          ),
-                        ),
-                      ],
-                    ),
-                    BrutalistBadge(
-                      label: 'Req ${activeCode.replaceAll("#REQ-", "#")}',
-                      backgroundColor: AppColors.butterAmber,
-                      isMonospace: false,
-                    ),
-                  ],
+
+                      // --- 1. Hero Incoming Order Summary Card ---
+                      _buildIncomingOrderHeroCard(
+                        orderCode: activeCode,
+                        totalBudget: totalBudget,
+                        netTotal: netTotal,
+                        feeTotal: feeTotal,
+                        stage1Net: stage1Net,
+                        stage2Net: stage2Net,
+                        stage3Net: stage3Net,
+                        vibeText: vibeText,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // --- 2. Structured Client Brief & Body Metrics ---
+                      _buildClientBriefCard(
+                        briefText: briefText,
+                        paletteHex: paletteHex,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // --- 3. Gemini Co-pilot Stylist Assistant ---
+                      _buildGeminiCopilotCard(),
+                      const SizedBox(height: 16),
+
+                      // --- 4. Stage 1 (30%) Deliverable Submission Form ---
+                      _buildStage1SubmissionCard(stage1Net: stage1Net),
+                    ],
+                  ),
                 ),
-
-                const SizedBox(height: 18),
-
-                // STYLOFY FANNED OVERLAPPING CARD STACK
-                _buildStylofyFannedCardStack(context, t),
-
-                const SizedBox(height: 22),
-
-                if (embeddedInShell) ...[
-                  _buildActionButtons(context, t),
-                ],
+                _buildStickyOrderActions(stage1Net: stage1Net),
               ],
             ),
           ),
-          bottomNavigationBar: embeddedInShell
-              ? null
-              : Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.transparent,
-                  ),
-                  child: SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                      child: _buildActionButtons(context, t),
-                    ),
-                  ),
-                ),
         );
       },
     );
   }
 
-  /// Stylofy Upright Clean Card Stack:
-  /// - Card 1: Top White Card with Client Specifications
-  /// - Card 2: Center Hero Deep Petrol Card with 2.125.000₫ Net Payout
-  /// - Card 3: Bottom White Card with Gemini AI Co-pilot
-  Widget _buildStylofyFannedCardStack(BuildContext context, AppTranslations t) {
-    return Column(
-      children: [
-        // 1. TOP CARD: Editorial Client Profile Card (Clean White with Hairline Border)
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.hairlineBorder, width: 1.0),
-            boxShadow: AppColors.hardShadow,
+  Widget _buildIncomingOrderHeroCard({
+    required String orderCode,
+    required int totalBudget,
+    required int netTotal,
+    required int feeTotal,
+    required int stage1Net,
+    required int stage2Net,
+    required int stage3Net,
+    required String vibeText,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.obsidianCard,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x241F1A17),
+            blurRadius: 24,
+            offset: Offset(0, 10),
           ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Top Row: Avatar + Typographic Specs (Left) & Subtle Rose Pill (Right)
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: Image.network(
-                      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
-                      width: 44,
-                      height: 44,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: AppColors.rosePinkSoft,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.person, color: Color(0xFFF43F5E), size: 22),
+              Expanded(
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 21,
+                      backgroundColor: AppColors.rosePinkSoft,
+                      backgroundImage: const NetworkImage(
+                        'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&auto=format&fit=crop&q=80',
                       ),
                     ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Alex Đỗ (Client)',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '168cm • 56kg • $vibeText',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              color: Colors.white70,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: _isOrderAccepted
+                      ? const Color(0xFFDCFCE7)
+                      : AppColors.sunshineYellowLight,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  _isOrderAccepted
+                      ? (l.isEnglish ? 'Escrow Funded 100%' : 'Đã Ký Quỹ 100%')
+                      : (l.isEnglish ? 'Pending' : 'Chờ Nhận Đơn'),
+                  style: GoogleFonts.plusJakartaSans(
+                    color: _isOrderAccepted
+                        ? const Color(0xFF15803D)
+                        : AppColors.ink,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white12, width: 1.0),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Alex Đỗ',
+                          l.isEnglish ? 'STYLIST NET PAYOUT (85%)' : 'THỰC NHẬN STYLIST (85% NET)',
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF18181B),
-                            letterSpacing: -0.3,
+                            color: Colors.white60,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.4,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
                         Text(
-                          '175 cm  •  65 kg  •  Streetwear AW26',
+                          CurrencyFormatter.formatVnd(netTotal),
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFF71717A),
+                            color: AppColors.sunshineYellow,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF1F2),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: const Color(0xFFFFE4E6), width: 1.0),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          l.isEnglish
+                              ? 'Total Escrow: ${CurrencyFormatter.formatVnd(totalBudget)}'
+                              : 'Tổng Ký Quỹ: ${CurrencyFormatter.formatVnd(totalBudget)}',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          l.isEnglish
+                              ? 'Fee (15%): -${CurrencyFormatter.formatVnd(feeTotal)}'
+                              : 'Phí sàn (15%): -${CurrencyFormatter.formatVnd(feeTotal)}',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white60,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      '#REQ-8452',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFFE11D48),
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Divider(color: Color(0xFFF4F4F5), height: 1, thickness: 1),
-              const SizedBox(height: 14),
-              Text(
-                '“Cần phối outfit Cyberpunk form rộng cho sự kiện ra mắt BST Thu Đông, tông đen kết hợp phụ kiện kim loại.”',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF3F3F46),
-                  fontStyle: FontStyle.italic,
-                  height: 1.45,
+                  ],
                 ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        // 2. CENTER HERO CARD (Rich Rose-Pink to Sunset-Orange Mesh Gradient #F9A8D4 -> #FB923C)
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: AppColors.heroPayoutGradient, // #F9A8D4 -> #FB923C
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.7), width: 1.0),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x33F43F5E),
-                blurRadius: 24,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(22),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header Row: Guaranteed Net Payout (Expanded) + Compact Fee Badge
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Guaranteed Net Payout',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF1E1B18),
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      borderRadius: BorderRadius.circular(999),
-                      boxShadow: AppColors.chipShadow,
-                    ),
-                    child: Text(
-                      '-15% Fee • Escrow',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF1E1B18),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                '2.125.000 ₫',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                  color: const Color(0xFF1E1B18),
-                  letterSpacing: -0.8,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Text(
-                    'Gross: 2.500.000₫',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11.5,
-                      color: const Color(0xFF1E1B18).withValues(alpha: 0.75),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '• Platform fee: -375.000₫',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11.5,
-                      color: const Color(0xFFD9381E),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // 3-Stage Escrow Milestones Strip (3 equal Expanded pills)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.75),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
+                const SizedBox(height: 12),
+                Row(
                   children: [
                     Expanded(
-                      child: _buildStagePill('Stage 1 • 637K', AppColors.coralOrange),
+                      child: _buildNetStagePill(
+                        l.isEnglish ? 'Stage 1 (30%)' : 'Chặng 1 (30%)',
+                        '+${CurrencyFormatter.formatVnd(stage1Net)}',
+                        true,
+                      ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: _buildStagePill('Stage 2 • 637K', AppColors.coralOrange),
+                      child: _buildNetStagePill(
+                        l.isEnglish ? 'Stage 2 (30%)' : 'Chặng 2 (30%)',
+                        '+${CurrencyFormatter.formatVnd(stage2Net)}',
+                        false,
+                      ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: _buildStagePill('Stage 3 • 850K', const Color(0xFF7A7067)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        // 3. BOTTOM CARD (Clean White with Hairline Border)
-        _buildGeminiCopilotStrip(t),
-      ],
-    );
-  }
-
-  static Widget _buildStagePill(String title, Color dotColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: AppColors.chipShadow,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: dotColor,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF1E1B18),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 2. Gemini AI Co-pilot Strip (Clean White Card)
-  Widget _buildGeminiCopilotStrip(AppTranslations t) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.hairlineBorder, width: 1.0),
-        boxShadow: AppColors.hardShadow,
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Row: Deep Petrol Pill "✨ Gemini Co-pilot" + Pill "3 Looks Ready"
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(999),
-                  boxShadow: AppColors.buttonShadow,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Gemini Co-pilot',
-                      style: GoogleFonts.plusJakartaSans(
-                        color: Colors.white,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
+                      child: _buildNetStagePill(
+                        l.isEnglish ? 'Stage 3 (40%)' : 'Chặng 3 (40%)',
+                        '+${CurrencyFormatter.formatVnd(stage3Net)}',
+                        false,
                       ),
                     ),
                   ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.rosePinkSoft,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  '3 Looks Ready',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: AppColors.coralOrange,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // 4 OVERLAPPING CIRCULAR COLOR SWATCHES + TRACK
-          Row(
-            children: [
-              // Overlapping Swatches
-              SizedBox(
-                width: 100,
-                height: 28,
-                child: Stack(
-                  children: [
-                    Positioned(left: 0, child: _buildColorSwatch(AppColors.coralOrange)),
-                    Positioned(left: 20, child: _buildColorSwatch(AppColors.sunshineYellow)),
-                    Positioned(left: 40, child: _buildColorSwatch(AppColors.rosePink)),
-                    Positioned(left: 60, child: _buildColorSwatch(AppColors.vermilion)),
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 8),
-
-              // Visual Slider Bar
-              Expanded(
-                child: Container(
-                  height: 28,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.canvasGlow,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: AppColors.hairlineBorder, width: 1.0),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.ink,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          height: 3,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                      Container(
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          color: AppColors.electricYellow,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.ink, width: 2.0),
-                        ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          height: 3,
-                          color: AppColors.ink.withValues(alpha: 0.25),
-                        ),
-                      ),
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: AppColors.ink.withValues(alpha: 0.3),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // 2 LOOKBOOK THUMBNAIL CARDS (with tilted #TECH and #ACID stickers)
-          Row(
-            children: [
-              Expanded(
-                child: _buildVisualPreviewCard(
-                  imageUrl: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=400&q=80',
-                  stickerLabel: '#TECH',
-                  stickerBgColor: AppColors.electricYellow,
-                  title: 'Tech Bomber',
-                  pose: 'Low Stride Pose',
-                  stickerAngle: -0.05,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildVisualPreviewCard(
-                  imageUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=400&q=80',
-                  stickerLabel: '#ACID',
-                  stickerBgColor: AppColors.cyber,
-                  title: 'Mesh Layer',
-                  pose: 'Lean Pose',
-                  stickerAngle: 0.05,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 14),
-
-          // 3 Mini Metadata Pills
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildMiniMetaPill('3 Items', bgColor: AppColors.cardBackground, textColor: AppColors.ink),
-              _buildMiniMetaPill('Style: Cyber Tech', bgColor: AppColors.electricYellow, textColor: AppColors.ink, isHighlighted: true),
-              _buildMiniMetaPill('Quota: 2 Revs', bgColor: AppColors.cardBackground, textColor: AppColors.ink),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-
-  Widget _buildColorSwatch(Color color) {
-    return Container(
-      width: 26,
-      height: 26,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2.0),
-        boxShadow: AppColors.chipShadow,
-      ),
-    );
-  }
-
-  Widget _buildVisualPreviewCard({
-    required String imageUrl,
-    required String stickerLabel,
-    required Color stickerBgColor,
-    required String title,
-    required String pose,
-    double stickerAngle = 0.0,
-  }) {
-    return Container(
-      height: 130,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.hairlineBorder, width: 1.0),
-        boxShadow: AppColors.chipShadow,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.network(
-            imageUrl,
-            fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
-            errorBuilder: (context, error, stackTrace) => Container(
-              color: AppColors.obsidian,
-              alignment: Alignment.center,
-              child: const Icon(Icons.checkroom, color: AppColors.electricYellow),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 60,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    AppColors.obsidian.withValues(alpha: 0.9),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 8,
-            left: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-              decoration: BoxDecoration(
-                color: stickerBgColor == AppColors.cyber || stickerBgColor == AppColors.acid || stickerBgColor == AppColors.electricYellow
-                    ? AppColors.warmAmber
-                    : stickerBgColor,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: Colors.white24, width: 1.0),
-                boxShadow: AppColors.chipShadow,
-              ),
-              child: Text(
-                stickerLabel,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.petrol,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 8,
-            left: 10,
-            right: 10,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTheme.titleStyle.copyWith(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  pose,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.warmAmber,
-                  ),
                 ),
               ],
             ),
@@ -700,86 +420,413 @@ class StylistInboxScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMiniMetaPill(
-    String label, {
-    required Color bgColor,
-    required Color textColor,
-    bool isHighlighted = false,
-  }) {
+  Widget _buildNetStagePill(String stage, String netAmount, bool isActive) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 6),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.hairlineBorder, width: 1.0),
-        boxShadow: AppColors.chipShadow,
-      ),
-      child: Text(
-        label,
-        style: AppTheme.headingStyle.copyWith(
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          color: textColor,
+        color: isActive
+            ? AppColors.sunshineYellow.withValues(alpha: 0.18)
+            : Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isActive ? AppColors.sunshineYellow : Colors.white12,
+          width: 1.0,
         ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            stage,
+            style: GoogleFonts.plusJakartaSans(
+              color: isActive ? AppColors.sunshineYellow : Colors.white60,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            netAmount,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, AppTranslations t) {
-    return Row(
-      children: [
-        // Left Primary Action: FashionDockButton "NHẬN ĐƠN & TẠO 3 MỐC →"
-        Expanded(
-          flex: 7,
-          child: FashionDockButton(
-            height: 50,
-            text: t.isVi ? 'Nhận Đơn & Tạo 3 Mốc →' : 'Accept & Setup 3 Stages →',
-            onPressed: () {
-              StylingRequestProvider.instance.fetchRequestsAndSelectActive();
-              if (onNavigateToTab != null) {
-                onNavigateToTab!(1);
-              } else {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const MilestoneWorkspaceScreen(
-                      isStylistView: true,
+  Widget _buildClientBriefCard({
+    required String briefText,
+    required List<String> paletteHex,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border, width: 1.0),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.assignment_ind_outlined, size: 18, color: AppColors.ink),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Yêu Cầu Của Khách (Client Brief)',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink,
                     ),
                   ),
-                );
-              }
-            },
-          ),
-        ),
-
-        const SizedBox(width: 10),
-
-        // Right Secondary Action: Minimal Pill "Từ Chối"
-        Expanded(
-          flex: 3,
-          child: GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              height: 50,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: AppColors.hairlineBorder, width: 1.0),
-                boxShadow: AppColors.buttonShadow,
+                ],
               ),
-              alignment: Alignment.center,
-              child: Text(
-                t.isVi ? 'Từ Chối' : 'Decline',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.petrol,
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const EscrowCheckoutScreen()),
+                  );
+                },
+                child: Text(
+                  'Xem Bill VietQR →',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11.5,
+                    color: AppColors.rosePink,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.alabaster,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              '"$briefText"',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12.5,
+                color: AppColors.ink,
+                height: 1.45,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Text(
+                'Tone màu khách chọn:',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(width: 10),
+              ...paletteHex.map(
+                (hex) => Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: _buildColorDot(_parseHexColor(hex), hex),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildColorDot(Color color, String hex) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.alabaster,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border, width: 1.0),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 11,
+            height: 11,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.black26, width: 0.8),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            hex,
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGeminiCopilotCard() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFF8E7), Color(0xFFFFEFE6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-      ],
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.coralOrange.withValues(alpha: 0.35), width: 1.0),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.ink,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.psychology_outlined,
+                      size: 15,
+                      color: AppColors.sunshineYellow,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    l.isEnglish ? 'Gemini Co-pilot Styling AI' : 'Gemini Co-pilot Gợi Ý Phối Đồ',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '96% Fit Match',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.coralOrange,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '• Gợi ý 1 (Upper): Áo Blazer Oversized Đen nhám giúp làm mềm bờ vai ngang.\n'
+            '• Gợi ý 2 (Inner): Corset Metallic Bạc tạo điểm nhấn thị giác vào vòng eo.\n'
+            '• Gợi ý 3 (Pose): Dáng "Low-Angle Power Lean" chụp từ góc thấp 15° giúp kéo dài chân.',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              height: 1.5,
+              color: AppColors.ink,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStage1SubmissionCard({required int stage1Net}) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border, width: 1.0),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  l.isEnglish
+                      ? 'Stage 1 Deliverable (30% Moodboard)'
+                      : 'Bàn Giao Chặng 1 (30% Moodboard)',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.sunshineYellowLight,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '+${CurrencyFormatter.formatVnd(stage1Net)} Net',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l.isEnglish
+                ? 'After submitting, client has 48 hours to approve or system will auto-release 30% to wallet.'
+                : 'Sau khi nộp bản thảo, khách hàng có 48h để nghiệm thu hoặc hệ thống sẽ tự động giải ngân 30% về ví.',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11.5,
+              color: AppColors.textMuted,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _stage1NotesController,
+            maxLines: 3,
+            style: GoogleFonts.plusJakartaSans(fontSize: 12.5, height: 1.4),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: AppColors.alabaster,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: AppColors.border, width: 1.0),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: AppColors.border, width: 1.0),
+              ),
+              contentPadding: const EdgeInsets.all(12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStickyOrderActions({required int stage1Net}) {
+    final t = AppStrings.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.hairlineBorder, width: 1.0)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 10,
+            offset: Offset(0, -3),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 46,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                flex: 1,
+                child: GestureDetector(
+                  onTap: () {
+                    if (widget.onNavigateToTab != null) {
+                      widget.onNavigateToTab!(1);
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MilestoneWorkspaceScreen(isStylistView: true),
+                        ),
+                      );
+                    }
+                  },
+                  child: Container(
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: AppColors.alabaster,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: AppColors.border, width: 1.0),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      t.escrowDetailsBtn,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: AppColors.ink,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: GestureDetector(
+                  onTap: _acceptAndDeliverStage1,
+                  child: Container(
+                    height: 46,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.primaryGradient,
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: AppColors.chipShadow,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      t.submitStage1Btn('+${CurrencyFormatter.formatVnd(stage1Net)}'),
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

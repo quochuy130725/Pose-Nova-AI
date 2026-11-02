@@ -22,6 +22,7 @@ apiV1Router.post('/tags/:id/click', LookbooksController.trackTagClick);
 // Phase 3: Styling Request, Gemini Co-pilot & SePay VietQR Escrow (Workflow 3)
 apiV1Router.use('/styling-requests', stylingRequestsRouter);
 apiV1Router.use('/webhooks', webhooksRouter);
+apiV1Router.use('/webhook', webhooksRouter); // Support both singular and plural
 
 // Phase 4: Milestone Execution, Disputes & Cyber Wallet Ledger (Workflows 3 & 4)
 apiV1Router.use('/milestones', milestonesRouter);

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' show Offset, Size;
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
@@ -13,7 +12,9 @@ class PoseFrame {
   final bool hasPose;
   final bool needsFullBody;
   final String statusText;
+  final String coachingHint;
   final int validCoreJoints;
+  final Map<String, double> jointDiffs;
 
   const PoseFrame({
     required this.points,
@@ -22,7 +23,9 @@ class PoseFrame {
     required this.hasPose,
     required this.needsFullBody,
     required this.statusText,
+    required this.coachingHint,
     required this.validCoreJoints,
+    this.jointDiffs = const {},
   });
 
   static const PoseFrame empty = PoseFrame(
@@ -32,7 +35,9 @@ class PoseFrame {
     hasPose: false,
     needsFullBody: false,
     statusText: 'Đang tìm dáng người...',
+    coachingHint: 'Đứng vào khung hình đối diện ống kính',
     validCoreJoints: 0,
+    jointDiffs: {},
   );
 
   PoseFrame copyWith({
@@ -42,7 +47,9 @@ class PoseFrame {
     bool? hasPose,
     bool? needsFullBody,
     String? statusText,
+    String? coachingHint,
     int? validCoreJoints,
+    Map<String, double>? jointDiffs,
   }) =>
       PoseFrame(
         points: points ?? this.points,
@@ -51,7 +58,9 @@ class PoseFrame {
         hasPose: hasPose ?? this.hasPose,
         needsFullBody: needsFullBody ?? this.needsFullBody,
         statusText: statusText ?? this.statusText,
+        coachingHint: coachingHint ?? this.coachingHint,
         validCoreJoints: validCoreJoints ?? this.validCoreJoints,
+        jointDiffs: jointDiffs ?? this.jointDiffs,
       );
 }
 
@@ -75,13 +84,137 @@ class PoseAngleDefinition {
   );
 }
 
+/// Mô hình tọa độ các điểm mốc cho Khung Xương Mẫu Nét Đứt (Ghost Guide Skeleton)
+class TargetGhostSkeleton {
+  final Offset nose;
+  final Offset leftShoulder;
+  final Offset rightShoulder;
+  final Offset leftElbow;
+  final Offset rightElbow;
+  final Offset leftWrist;
+  final Offset rightWrist;
+  final Offset? leftHip;
+  final Offset? rightHip;
+
+  const TargetGhostSkeleton({
+    required this.nose,
+    required this.leftShoulder,
+    required this.rightShoulder,
+    required this.leftElbow,
+    required this.rightElbow,
+    required this.leftWrist,
+    required this.rightWrist,
+    this.leftHip,
+    this.rightHip,
+  });
+
+  /// Tính toán vị trí các khớp của Khung Xương Mẫu:
+  /// - Nếu đã thấy 2 vai người dùng: neo gốc tại trung điểm 2 vai và co giãn theo khoảng cách 2 vai
+  /// - Nếu chưa thấy: vẽ cân đối ở trung tâm màn hình
+  factory TargetGhostSkeleton.compute({
+    required Size size,
+    required Map<String, double> targetAngles,
+    Offset? userLeftShoulder,
+    Offset? userRightShoulder,
+    String? lookbookTitle,
+  }) {
+    final title = (lookbookTitle ?? '').toLowerCase();
+    final bool isRaisedArmPose = title.contains('kimono') ||
+        title.contains('outlaw') ||
+        title.contains('tokyo') ||
+        title.contains('cyber') ||
+        title.contains('rave') ||
+        title.contains('power') ||
+        title.contains('flare');
+    final bool isChinPose = title.contains('chin') ||
+        title.contains('sakura') ||
+        title.contains('portrait') ||
+        title.contains('selfie');
+    final bool isCrossArms = title.contains('cross');
+
+    Offset ls;
+    Offset rs;
+    double span;
+    double shoulderAngleRad = 0.0;
+
+    if (userLeftShoulder != null && userRightShoulder != null) {
+      ls = userLeftShoulder;
+      rs = userRightShoulder;
+      final dx = rs.dx - ls.dx;
+      final dy = rs.dy - ls.dy;
+      span = math.sqrt(dx * dx + dy * dy);
+      if (span < 20.0) span = size.width * 0.32;
+      shoulderAngleRad = math.atan2(dy, dx);
+    } else {
+      final cx = size.width * 0.5;
+      final cy = size.height * 0.38;
+      span = size.width * 0.34;
+      ls = Offset(cx - span * 0.5, cy);
+      rs = Offset(cx + span * 0.5, cy);
+    }
+
+    final midShoulder = Offset((ls.dx + rs.dx) * 0.5, (ls.dy + rs.dy) * 0.5);
+    final upUnit = Offset(math.sin(shoulderAngleRad), -math.cos(shoulderAngleRad));
+    final nose = Offset(
+      midShoulder.dx + upUnit.dx * (span * 0.65),
+      midShoulder.dy + upUnit.dy * (span * 0.65),
+    );
+
+    Offset le;
+    Offset re;
+    Offset lw;
+    Offset rw;
+
+    if (isRaisedArmPose) {
+      // Dang 2 tay cao (Cyber Neo Kimono / Tokyo Outlaw)
+      le = Offset(ls.dx - span * 0.85, ls.dy - span * 0.45);
+      re = Offset(rs.dx + span * 0.85, rs.dy - span * 0.45);
+      lw = Offset(le.dx - span * 0.75, le.dy - span * 0.30);
+      rw = Offset(re.dx + span * 0.75, re.dy - span * 0.30);
+    } else if (isChinPose) {
+      // 1 tay chống cằm / giơ lên mặt, 1 tay buông
+      le = Offset(ls.dx - span * 0.40, ls.dy + span * 0.50);
+      lw = Offset(midShoulder.dx - span * 0.10, midShoulder.dy - span * 0.20);
+      re = Offset(rs.dx + span * 0.30, rs.dy + span * 0.90);
+      rw = Offset(re.dx + span * 0.15, re.dy + span * 0.80);
+    } else if (isCrossArms) {
+      // Khoanh tay trước ngực
+      le = Offset(ls.dx - span * 0.35, ls.dy + span * 0.60);
+      re = Offset(rs.dx + span * 0.35, rs.dy + span * 0.60);
+      lw = Offset(midShoulder.dx + span * 0.25, midShoulder.dy + span * 0.55);
+      rw = Offset(midShoulder.dx - span * 0.25, midShoulder.dy + span * 0.55);
+    } else {
+      // Dáng đứng tự nhiên / Vest / Streetwear
+      le = Offset(ls.dx - span * 0.30, ls.dy + span * 0.90);
+      re = Offset(rs.dx + span * 0.30, rs.dy + span * 0.90);
+      lw = Offset(le.dx - span * 0.15, le.dy + span * 0.85);
+      rw = Offset(re.dx + span * 0.15, re.dy + span * 0.85);
+    }
+
+    final lh = Offset(ls.dx + span * 0.10, ls.dy + span * 1.6);
+    final rh = Offset(rs.dx - span * 0.10, rs.dy + span * 1.6);
+
+    return TargetGhostSkeleton(
+      nose: nose,
+      leftShoulder: ls,
+      rightShoulder: rs,
+      leftElbow: le,
+      rightElbow: re,
+      leftWrist: lw,
+      rightWrist: rw,
+      leftHip: lh,
+      rightHip: rh,
+    );
+  }
+}
+
 /// Dịch vụ tính toán tư thế & chấm điểm khớp góc vector thời gian thực
 class MlKitPoseService {
   MlKitPoseService._();
 
-  static const double minLikelihood = 0.50;
+  static const double minLikelihood = 0.45;
 
-  /// 2 khớp vai bắt buộc để xác nhận thấy rõ thân người (chặn trường hợp chỉ dí khuôn mặt vào camera)
+  /// 2 khớp vai bắt buộc để xác nhận thấy rõ thân người
   static const List<PoseLandmarkType> upperBodyCoreJoints = [
     PoseLandmarkType.leftShoulder,
     PoseLandmarkType.rightShoulder,
@@ -194,7 +327,6 @@ class MlKitPoseService {
       26,
       28,
     ),
-    // 3 góc thân trên & chân dung độc lập (không cần cổ tay hay hông)
     PoseAngleDefinition(
       'leftArmFlare',
       PoseLandmarkType.rightShoulder,
@@ -251,62 +383,72 @@ class MlKitPoseService {
     return deg;
   }
 
-  /// Tính góc từ 3 tọa độ (x, y) bất kỳ
-  static double calculateRawAngle(
-    double ax,
-    double ay,
-    double bx,
-    double by,
-    double cx,
-    double cy,
-  ) {
-    final radians = math.atan2(cy - by, cx - bx) - math.atan2(ay - by, ax - bx);
-    var deg = (radians * 180.0 / math.pi).abs();
-    if (deg > 180.0) deg = 360.0 - deg;
-    return deg;
-  }
-
   /// Trích xuất bộ góc chuẩn đặc trưng cho Lookbook
   static Map<String, double> getTargetAnglesForLookbook({
     dynamic poseLandmarksJson,
     String? title,
     String? category,
   }) {
-    // 1. Thử trích xuất từ poseLandmarksJson nếu hợp lệ
-    final fromJson = _extractTargetAnglesFromJson(poseLandmarksJson);
-    if (fromJson != null && fromJson.length == 8) {
-      return fromJson;
-    }
-
-    // 2. Fallback sang bộ góc chuẩn đặc trưng (Fashion Pose Presets)
     final combined = '${title ?? ''} ${category ?? ''}'.toLowerCase();
 
-    // Dáng chân dung / Bán thân / Ngồi chống cằm / Cận cảnh (Portrait / Sitting Chin / Selfie)
-    if (combined.contains('sakura') ||
-        combined.contains('chin') ||
-        combined.contains('portrait') ||
-        combined.contains('face') ||
-        combined.contains('selfie') ||
-        combined.contains('blazer') ||
-        combined.contains('headshot') ||
-        combined.contains('relax')) {
+    // 1. Dáng dang 2 tay / Cyber Neo Kimono / Tokyo Outlaw / Dynamic Rave
+    if (combined.contains('kimono') ||
+        combined.contains('outlaw') ||
+        combined.contains('tokyo') ||
+        combined.contains('cyber') ||
+        combined.contains('power') ||
+        combined.contains('rave')) {
       return {
-        'leftArmFlare': 98.0,
-        'rightArmFlare': 100.0,
+        'leftArmFlare': 138.0,
+        'rightArmFlare': 138.0,
         'headShoulderSpan': 82.0,
-        'leftElbow': 110.0,
-        'rightElbow': 115.0,
-        'leftShoulder': 48.0,
-        'rightShoulder': 46.0,
+        'leftElbow': 105.0,
+        'rightElbow': 105.0,
+        'leftShoulder': 88.0,
+        'rightShoulder': 88.0,
+        'leftHip': 172.0,
+        'rightHip': 174.0,
       };
     }
 
-    // Dáng ngồi / Vest / Suit / Editorial Office
+    // 2. Dáng chân dung / Chống cằm / Sakura / Selfie / Blazer
+    if (combined.contains('sakura') ||
+        combined.contains('chin') ||
+        combined.contains('portrait') ||
+        combined.contains('selfie')) {
+      return {
+        'leftArmFlare': 115.0,
+        'rightArmFlare': 100.0,
+        'headShoulderSpan': 82.0,
+        'leftElbow': 88.0,
+        'rightElbow': 130.0,
+        'leftShoulder': 78.0,
+        'rightShoulder': 42.0,
+        'leftHip': 170.0,
+        'rightHip': 170.0,
+      };
+    }
+
+    // 3. Dáng khoanh tay trước ngực
+    if (combined.contains('cross')) {
+      return {
+        'leftArmFlare': 120.0,
+        'rightArmFlare': 120.0,
+        'headShoulderSpan': 82.0,
+        'leftElbow': 72.0,
+        'rightElbow': 72.0,
+        'leftShoulder': 55.0,
+        'rightShoulder': 55.0,
+        'leftHip': 170.0,
+        'rightHip': 170.0,
+      };
+    }
+
+    // 4. Dáng ngồi / Suit / Office
     if (combined.contains('vest') ||
         combined.contains('suit') ||
         combined.contains('office') ||
-        combined.contains('sit') ||
-        combined.contains('kimono')) {
+        combined.contains('sit')) {
       return {
         'leftArmFlare': 100.0,
         'rightArmFlare': 102.0,
@@ -315,108 +457,30 @@ class MlKitPoseService {
         'rightElbow': 115.0,
         'leftShoulder': 48.0,
         'rightShoulder': 46.0,
-        'leftHip': 98.0, // Dáng ngồi góc hông ~90°-110°
+        'leftHip': 98.0,
         'rightHip': 102.0,
         'leftKnee': 92.0,
         'rightKnee': 95.0,
       };
     }
 
-    // Dáng ngồi chồm / Dynamic Crouch / Acid Rave
-    if (combined.contains('crouch') ||
-        combined.contains('rave') ||
-        combined.contains('acid') ||
-        combined.contains('squat')) {
-      return {
-        'leftArmFlare': 108.0,
-        'rightArmFlare': 105.0,
-        'headShoulderSpan': 80.0,
-        'leftElbow': 118.0,
-        'rightElbow': 122.0,
-        'leftShoulder': 56.0,
-        'rightShoulder': 54.0,
-        'leftHip': 105.0,
-        'rightHip': 100.0,
-        'leftKnee': 96.0,
-        'rightKnee': 92.0,
-      };
-    }
-
-    // Dáng đứng Streetwear / Trench Coat / Minimal Stance (Mặc định)
+    // 5. Dáng đứng Streetwear / Trench Coat mặc định
     return {
       'leftArmFlare': 102.0,
       'rightArmFlare': 102.0,
       'headShoulderSpan': 82.0,
-      'leftElbow': 142.0, // Tay buông tự nhiên hơi gập nhẹ
+      'leftElbow': 142.0,
       'rightElbow': 136.0,
-      'leftShoulder': 38.0, // Cánh tay sát thân
+      'leftShoulder': 38.0,
       'rightShoulder': 42.0,
-      'leftHip': 172.0, // Dáng đứng góc hông ~165°-180°
+      'leftHip': 172.0,
       'rightHip': 174.0,
       'leftKnee': 176.0,
       'rightKnee': 175.0,
     };
   }
 
-  static Map<String, double>? _extractTargetAnglesFromJson(dynamic raw) {
-    try {
-      dynamic data = raw;
-      if (data is String && data.trim().isNotEmpty) data = jsonDecode(data);
-      if (data is Map && data['landmarks'] is List) data = data['landmarks'];
-      if (data is! List || data.length < 33) return null;
-
-      final xs = <int, double>{};
-      final ys = <int, double>{};
-      final vs = <int, double>{};
-      for (final e in data) {
-        if (e is! Map) continue;
-        final idxRaw = e['landmarkIndex'] ?? e['index'];
-        final x = e['x'];
-        final y = e['y'];
-        if (idxRaw is! num || x is! num || y is! num) continue;
-        final idx = idxRaw.toInt();
-        xs[idx] = x.toDouble();
-        ys[idx] = y.toDouble();
-        final vis = e['visibility'] ?? e['likelihood'] ?? e['inFrameLikelihood'] ?? 1.0;
-        vs[idx] = vis is num ? vis.toDouble() : 1.0;
-      }
-
-      for (final i in const [0, 11, 12, 23, 24, 27, 28]) {
-        if (!xs.containsKey(i)) return null;
-      }
-      final shoulderWidth = (xs[11]! - xs[12]!).abs();
-      final bodySpan = ((ys[27]! + ys[28]!) / 2) - ys[0]!;
-      if (shoulderWidth < 0.05 || bodySpan < 0.30) return null;
-
-      final result = <String, double>{};
-      for (final def in angleDefinitions) {
-        if (!xs.containsKey(def.iFirst) ||
-            !xs.containsKey(def.iMid) ||
-            !xs.containsKey(def.iLast)) {
-          continue;
-        }
-        if ((vs[def.iFirst] ?? 0) < minLikelihood ||
-            (vs[def.iMid] ?? 0) < minLikelihood ||
-            (vs[def.iLast] ?? 0) < minLikelihood) {
-          continue;
-        }
-        result[def.name] = calculateRawAngle(
-          xs[def.iFirst]!,
-          ys[def.iFirst]!,
-          xs[def.iMid]!,
-          ys[def.iMid]!,
-          xs[def.iLast]!,
-          ys[def.iLast]!,
-        );
-      }
-      return result.length == 8 ? result : null;
-    } catch (_) {
-      return null;
-    }
-  }
-
   /// Xây dựng PoseFrame từ đối tượng Pose của ML Kit
-  /// Sử dụng PoseMatchingConfig và Strategy Pattern cho việc chấm điểm
   static PoseFrame buildFrame({
     required Pose pose,
     required Size uprightSize,
@@ -425,27 +489,36 @@ class MlKitPoseService {
     Map<PoseLandmarkType, Offset>? previousPoints,
     PoseMatchingConfig? config,
     PoseMatcherStrategy? strategy,
+    String? lookbookTitle,
   }) {
     final effectiveConfig = config ?? PoseMatchingConfig.current;
     final effectiveStrategy = strategy ?? const VectorAngleToleranceMatcher();
 
-    // 1. Kiểm tra Gate thân trên (yêu cầu tối thiểu minUpperBodyJoints hiển thị rõ)
+    // 1. Kiểm tra 2 vai
     int upperBodyCount = 0;
     for (final type in upperBodyCoreJoints) {
       final lm = pose.landmarks[type];
-      if (lm != null && lm.likelihood > effectiveConfig.minLikelihood) {
+      if (lm != null && lm.likelihood >= minLikelihood) {
         upperBodyCount++;
       }
     }
 
-    // 2. Chuyển đổi tọa độ 2D chuẩn hóa (0..1) kèm làm mượt (EMA Smoothing)
-    // Instant Skeleton Startup: Nếu previousPoints rỗng (frame đầu tiên), gán ngay lập tức
+    // 2. Kiểm tra cùi chỏ (Elbow likelihood gate)
+    final leftElbowLm = pose.landmarks[PoseLandmarkType.leftElbow];
+    final rightElbowLm = pose.landmarks[PoseLandmarkType.rightElbow];
+    final bool hasLeftElbow =
+        leftElbowLm != null && leftElbowLm.likelihood >= minLikelihood;
+    final bool hasRightElbow =
+        rightElbowLm != null && rightElbowLm.likelihood >= minLikelihood;
+    final int visibleElbowCount = (hasLeftElbow ? 1 : 0) + (hasRightElbow ? 1 : 0);
+
+    // 3. Tọa độ chuẩn hóa (0..1) kèm làm mượt EMA
     final points = <PoseLandmarkType, Offset>{};
     final double alpha = effectiveConfig.coordinateSmoothingAlpha;
 
     for (final type in trackedTypes) {
       final lm = pose.landmarks[type];
-      if (lm == null || lm.likelihood < effectiveConfig.minLikelihood) continue;
+      if (lm == null || lm.likelihood < minLikelihood) continue;
 
       var nx = (lm.x / uprightSize.width).clamp(0.0, 1.0);
       final ny = (lm.y / uprightSize.height).clamp(0.0, 1.0);
@@ -461,7 +534,6 @@ class MlKitPoseService {
           prev.dy * (1.0 - alpha) + current.dy * alpha,
         );
       } else {
-        // Frame đầu tiên hoặc khớp mới xuất hiện: gán ngay không có độ trễ
         points[type] = current;
       }
     }
@@ -475,11 +547,13 @@ class MlKitPoseService {
         hasPose: false,
         needsFullBody: false,
         statusText: 'Đang tìm dáng người...',
+        coachingHint: 'Đứng vào khung hình đối diện ống kính',
         validCoreJoints: 0,
+        jointDiffs: {},
       );
     }
 
-    // 3. Tính góc vector CHỈ TRÊN NHỮNG GÓC HIỂN THỊ RÕ (cả 3 khớp đều có likelihood > minLikelihood)
+    // 4. Tính các góc vector của người dùng
     final userAngles = <String, double>{};
     for (final def in angleDefinitions) {
       final first = pose.landmarks[def.first];
@@ -489,16 +563,15 @@ class MlKitPoseService {
       if (first == null ||
           mid == null ||
           last == null ||
-          first.likelihood < effectiveConfig.minLikelihood ||
-          mid.likelihood < effectiveConfig.minLikelihood ||
-          last.likelihood < effectiveConfig.minLikelihood) {
-        // Bỏ qua góc bị khuất khỏi màn hình (KHÔNG phạt)
+          first.likelihood < minLikelihood ||
+          mid.likelihood < minLikelihood ||
+          last.likelihood < minLikelihood) {
         continue;
       }
       userAngles[def.name] = calculateAngle(first, mid, last);
     }
 
-    // 4. Đánh giá độ tương đồng qua PoseMatcherStrategy
+    // 5. Đánh giá độ tương đồng qua PoseMatcherStrategy
     final evaluation = effectiveStrategy.evaluate(
       userAngles: userAngles,
       targetAngles: targetAngles,
@@ -506,27 +579,78 @@ class MlKitPoseService {
       config: effectiveConfig,
     );
 
-    // 5. Kiểm tra Gate thân trên:
-    // Bắt buộc phải có đủ 2 vai VÀ ít nhất 1 góc chi thể (bắp tay/vai/cùi chỏ)
-    // Chặn tuyệt đối lỗi chỉ đưa khuôn mặt lại gần mà vẫn đạt điểm cao
-    final int limbAngleCount =
-        userAngles.keys.where((k) => k != 'headShoulderSpan').length;
-    final bool hasBodyAngles = limbAngleCount >= 1;
-    final bool hasBothShoulders =
-        upperBodyCount >= effectiveConfig.minUpperBodyJoints;
-    final bool needsUpperBody = !hasBothShoulders || !hasBodyAngles;
+    final jointDiffs = Map<String, double>.from(evaluation.jointDiffs);
+
+    // 6. Kiểm tra độ nghiêng vai
+    double shoulderTiltDeg = 0.0;
+    if (points.containsKey(PoseLandmarkType.leftShoulder) &&
+        points.containsKey(PoseLandmarkType.rightShoulder)) {
+      final ls = points[PoseLandmarkType.leftShoulder]!;
+      final rs = points[PoseLandmarkType.rightShoulder]!;
+      shoulderTiltDeg = (math.atan2((rs.dy - ls.dy).abs(), (rs.dx - ls.dx).abs()) * 180.0 / math.pi);
+    }
+
+    // 7. Gate thân trên & Chặn nghịch lý buông tay không có khuỷu tay
+    final bool hasBothShoulders = upperBodyCount >= 2;
+    final bool needsShoulders = !hasBothShoulders;
+
+    // Đối với các dáng có động tác tay: bắt buộc phải thấy ít nhất 1 khuỷu tay
+    final title = (lookbookTitle ?? '').toLowerCase();
+    final bool requiresArmPose = title.contains('kimono') ||
+        title.contains('outlaw') ||
+        title.contains('tokyo') ||
+        title.contains('cyber') ||
+        title.contains('chin') ||
+        title.contains('cross') ||
+        title.contains('rave');
 
     double finalScore = evaluation.score;
+    bool needsFullBody = false;
     String statusText;
+    String coachingHint;
 
-    if (needsUpperBody) {
-      finalScore =
-          evaluation.score.clamp(15.0, effectiveConfig.faceOnlyMaxScore);
-      statusText = 'Step Back • Show Upper Body';
-    } else if (finalScore >= effectiveConfig.matchThreshold) {
-      statusText = 'Pose Matched (${finalScore.round()}%)';
+    if (needsShoulders) {
+      needsFullBody = true;
+      finalScore = finalScore.clamp(10.0, 55.0);
+      statusText = 'Step Back • Show Both Shoulders';
+      coachingHint = 'Lùi lại nhẹ để thấy rõ hai vai';
+    } else if (requiresArmPose && visibleElbowCount == 0) {
+      // Người dùng buông tay khuất khung hình trong khi mẫu giơ tay
+      needsFullBody = true;
+      finalScore = finalScore.clamp(20.0, 68.0);
+      statusText = 'Show Arms in Frame';
+      coachingHint = 'Đưa tay vào khung hình theo mẫu';
+    } else if (shoulderTiltDeg > 18.0) {
+      finalScore = (finalScore - 12.0).clamp(20.0, 100.0);
+      statusText = 'Balance Shoulders';
+      coachingHint = 'Giữ cân bằng hai vai đối diện ống kính';
     } else {
-      statusText = 'Scanning Pose... (${finalScore.round()}%)';
+      // Tìm khớp đang lệch nhiều nhất để nhắc hành động
+      double maxArmDiff = 0.0;
+      bool isArmLower = false;
+
+      for (final key in ['leftArmFlare', 'rightArmFlare', 'leftShoulder', 'rightShoulder']) {
+        final d = jointDiffs[key] ?? 0.0;
+        if (d > maxArmDiff) {
+          maxArmDiff = d;
+          if (targetAngles.containsKey(key) && userAngles.containsKey(key)) {
+            isArmLower = userAngles[key]! < targetAngles[key]!;
+          }
+        }
+      }
+
+      if (finalScore >= effectiveConfig.matchThreshold) {
+        statusText = 'Pose Matched (${finalScore.round()}%)';
+        coachingHint = 'Tư thế hoàn hảo! Giữ yên để chụp...';
+      } else if (maxArmDiff > 18.0) {
+        statusText = 'Scanning Pose... (${finalScore.round()}%)';
+        coachingHint = isArmLower
+            ? 'Nâng khuỷu tay cao lên theo khung mẫu'
+            : 'Đưa cánh tay khớp vào đường nét đứt';
+      } else {
+        statusText = 'Scanning Pose... (${finalScore.round()}%)';
+        coachingHint = 'Chỉnh khớp vào đường nét đứt';
+      }
     }
 
     return PoseFrame(
@@ -534,9 +658,11 @@ class MlKitPoseService {
       score: finalScore,
       diffDegrees: evaluation.rawDiff,
       hasPose: true,
-      needsFullBody: needsUpperBody,
+      needsFullBody: needsFullBody,
       statusText: statusText,
+      coachingHint: coachingHint,
       validCoreJoints: upperBodyCount,
+      jointDiffs: jointDiffs,
     );
   }
 }

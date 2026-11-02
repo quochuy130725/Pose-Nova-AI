@@ -34,7 +34,7 @@ export const createStylingRequestBodySchema = z
     colorPalette: z.array(z.string().trim()).optional(),
     totalBudget: z.coerce
       .number()
-      .min(100000, 'Minimum styling contract budget is 100,000 VND'),
+      .min(1000, 'Minimum styling contract budget is 1,000 VND'),
   })
   .transform((data) => ({
     stylistId: data.stylistId,
@@ -77,4 +77,3 @@ export const createReviewBodySchema = z
 export type AiEnhanceBriefBody = z.infer<typeof aiEnhanceBriefBodySchema>;
 export type CreateStylingRequestBody = z.infer<typeof createStylingRequestBodySchema>;
 export type CreateReviewBody = z.infer<typeof createReviewBodySchema>;
-

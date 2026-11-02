@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/theme/app_colors.dart';
-import '../core/utils/currency_formatter.dart';
 import '../providers/wallet_provider.dart';
 import '../widgets/brutalist_badge.dart';
 import '../widgets/cyber_black_card.dart';
@@ -26,7 +25,7 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
   @override
   void initState() {
     super.initState();
-    WalletProvider.instance.fetchMyWallet();
+    WalletProvider.instance.fetchWallet();
   }
 
   @override
@@ -67,22 +66,21 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
             child: ListView(
               padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, embeddedInShell ? 88.0 : 32.0),
               children: [
-                // Component 3: Thẻ Ví WALLET Luxurious Sunset Rose-to-Gold
+                // Thẻ Ví WALLET Luxurious Sunset Rose-to-Gold
                 CyberBlackCard(
                   balanceVnd: walletProvider.availableBalanceVnd,
                   escrowLockedVnd: walletProvider.escrowLockedVnd,
-                  walletId: walletProvider.walletId,
+                  walletId: 'WAL-STY-8452',
                   onWithdraw: () async {
-                    final result = await walletProvider.withdrawToBank();
+                    final success = await walletProvider.withdrawAll();
                     if (!context.mounted) return;
-                    final withdrawn = (result?['withdrawnAmountVnd'] as num?)?.toInt() ?? 200000;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         backgroundColor: AppColors.ink,
                         content: Text(
-                          result != null
-                              ? 'Đã rút thành công ${CurrencyFormatter.formatVnd(withdrawn)} về ngân hàng liên kết! Số dư mới: ${CurrencyFormatter.formatVnd(walletProvider.availableBalanceVnd)}'
-                              : 'Yêu cầu rút tiền về tài khoản ngân hàng liên kết đã được ghi nhận!',
+                          success
+                              ? 'Đã rút toàn bộ số dư khả dụng về tài khoản ngân hàng liên kết (MBBank • 0829100286)!'
+                              : 'Số dư khả dụng hiện tại là 0₫.',
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -90,117 +88,119 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
                   },
                 ),
 
-            const SizedBox(height: 22),
+                const SizedBox(height: 22),
 
-            // Sổ cái Giao dịch (PAYMENT_TRANSACTION Ledger)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      const Icon(Icons.receipt_long, size: 18, color: AppColors.coralOrange),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          'Escrow Reconciliation Ledger',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.ink,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Fee: 15%',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.coralOrange,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Dòng Giao dịch 1: Stage 02 Release (+382,500 VND)
-            _buildLedgerItem(
-              amountText: '+382.500₫',
-              title: 'Milestone Release (30% Stage 02 · #REQ-8452)',
-              subtitle: 'Nghiệm thu: Outfit Selection & Tags • Phí sàn -67.500₫',
-              timeText: 'Hôm nay, 10:25 AM',
-              isSuccess: true,
-            ),
-
-            const SizedBox(height: 10),
-
-            // Dòng Giao dịch 2: Stage 01 Release (+382,500 VND)
-            _buildLedgerItem(
-              amountText: '+382.500₫',
-              title: 'Milestone Release (30% Stage 01 · #REQ-8452)',
-              subtitle: 'Nghiệm thu: Moodboard & Concept • Phí sàn -67.500₫',
-              timeText: '19/10/2026, 09:15 AM',
-              isSuccess: true,
-            ),
-
-            const SizedBox(height: 10),
-
-            // Dòng Giao dịch 3: Initial 100% Escrow Deposit (+2,500,000 VND locked)
-            _buildLedgerItem(
-              amountText: '+2.500.000₫',
-              title: 'Escrow Deposit (#REQ-8452)',
-              subtitle: 'SePay VietQR 100% Escrow Inflow • Đóng băng quỹ trung gian',
-              timeText: '18/10/2026, 10:20 AM',
-              isSuccess: true,
-              isDepositInflow: true,
-            ),
-
-            const SizedBox(height: 24),
-
-            // Nút Đăng Xuất Tài Khoản Stylist
-            GestureDetector(
-              onTap: () {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (r) => false,
-                );
-              },
-              child: Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: AppColors.hairlineBorder, width: AppColors.cardBorderWidth),
-                  boxShadow: AppColors.chipShadow,
-                ),
-                alignment: Alignment.center,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                // Sổ cái Giao dịch (PAYMENT_TRANSACTION Ledger)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Icon(Icons.logout, size: 18, color: AppColors.coralOrange),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.receipt_long, size: 18, color: AppColors.coralOrange),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'Escrow Reconciliation Ledger',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.ink,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(width: 8),
                     Text(
-                      'Đăng Xuất Tài Khoản (Logout)',
+                      'Fee: 15%',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12.5,
+                        fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
+                        color: AppColors.coralOrange,
                       ),
                     ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 12),
+
+                // Hiển thị danh sách Giao dịch ĐỘNG từ WalletProvider (Không bao giờ hardcode)
+                if (walletProvider.ledger.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.hairlineBorder),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Chưa có giao dịch giải ngân nào.',
+                      style: GoogleFonts.plusJakartaSans(color: AppColors.textMuted),
+                    ),
+                  )
+                else
+                  ...walletProvider.ledger.map((entry) {
+                    final bool isDeposit = entry.title.contains('Escrow Deposit');
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10.0),
+                      child: _buildLedgerItem(
+                        amountText: entry.amountText,
+                        title: entry.title,
+                        subtitle: entry.subtitle,
+                        timeText: entry.timestamp,
+                        isSuccess: true,
+                        isDepositInflow: isDeposit,
+                      ),
+                    );
+                  }),
+
+                const SizedBox(height: 24),
+
+                // Nút Đăng Xuất Tài Khoản Stylist
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      (r) => false,
+                    );
+                  },
+                  child: Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: AppColors.hairlineBorder,
+                        width: AppColors.cardBorderWidth,
+                      ),
+                      boxShadow: AppColors.chipShadow,
+                    ),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.logout, size: 18, color: AppColors.coralOrange),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Đăng Xuất Tài Khoản (Logout)',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    );
+          ),
+        );
       },
     );
   }
@@ -279,14 +279,14 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
                   subtitle,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 11,
-                    color: AppColors.textMuted,
+                    color: AppColors.petrol.withValues(alpha: 0.65),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
                   timeText,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10,
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 9.5,
                     color: AppColors.textMuted,
                   ),
                 ),

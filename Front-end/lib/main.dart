@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'core/theme/app_colors.dart';
@@ -22,7 +23,9 @@ import 'widgets/technical_grid_background.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await ApiConfig.loadEnv();
+  await LocaleController.instance.init();
   runApp(const PoseNovaApp());
 }
 
@@ -32,12 +35,13 @@ class PoseNovaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: AppLanguageController.instance,
+      listenable: LocaleController.instance,
       builder: (context, _) {
         return MaterialApp(
           title: 'PoseNova AI',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.neoBrutalistTheme,
+          locale: LocaleController.instance.locale,
           home: const LoginScreen(),
         );
       },
@@ -346,7 +350,7 @@ class DemoHubScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 16),
                             FashionDockButton(
-                              text: 'Open Workspace (30% - 30% - 40%) ⚡',
+                              text: 'Open Workspace (30% - 30% - 40%) →',
                               onPressed: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (_) => screen),
@@ -370,7 +374,7 @@ class DemoHubScreen extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Text('⚡', style: TextStyle(fontSize: 10)),
+                              const Icon(Icons.star_rounded, size: 11, color: AppColors.ink),
                               const SizedBox(width: 4),
                               Text(
                                 'Featured Flow',

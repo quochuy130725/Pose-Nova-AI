@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/localization/app_language.dart';
 import '../core/theme/app_colors.dart';
+import '../core/utils/currency_formatter.dart';
 import '../providers/styling_request_provider.dart';
 import '../widgets/brutalist_badge.dart';
 import '../widgets/brutalist_button.dart';
@@ -61,7 +62,7 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                '2.500.000₫ đã vào Quỹ Ký Quỹ Đóng Băng (${StylingRequestProvider.instance.activeRequestDisplayCode}).\nTự động khóa 85% Net & kích hoạt 3 chặng 30-30-40!',
+                '${CurrencyFormatter.formatVnd(StylingRequestProvider.instance.activeTotalBudget)} đã vào Quỹ Ký Quỹ Đóng Băng (${StylingRequestProvider.instance.activeRequestDisplayCode}).\nTự động khóa 85% Net & kích hoạt 3 chặng 30-30-40!',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 12.5,
@@ -187,7 +188,7 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            '2.500.000₫',
+                            CurrencyFormatter.formatVnd(StylingRequestProvider.instance.activeTotalBudget),
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 34,
                               fontWeight: FontWeight.w900,
@@ -241,11 +242,32 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
                           ),
                           const SizedBox(height: 10),
 
-                          _buildEscrowBarItem('01', 'Moodboard & Concept', '30%', '750.000₫', AppColors.petrol, Colors.white),
+                          _buildEscrowBarItem(
+                            '01',
+                            'Moodboard & Concept',
+                            '30%',
+                            CurrencyFormatter.formatVnd(StylingRequestProvider.instance.stageGrossAmount(1)),
+                            AppColors.petrol,
+                            Colors.white,
+                          ),
                           const SizedBox(height: 8),
-                          _buildEscrowBarItem('02', 'Outfit Selection & Tags', '30%', '750.000₫', AppColors.warmAmber, AppColors.petrol),
+                          _buildEscrowBarItem(
+                            '02',
+                            'Outfit Selection & Tags',
+                            '30%',
+                            CurrencyFormatter.formatVnd(StylingRequestProvider.instance.stageGrossAmount(2)),
+                            AppColors.warmAmber,
+                            AppColors.petrol,
+                          ),
                           const SizedBox(height: 8),
-                          _buildEscrowBarItem('03', 'Final Lookbook & Pose', '40%', '1.000.000₫', AppColors.porcelainSmoke, AppColors.petrol),
+                          _buildEscrowBarItem(
+                            '03',
+                            'Final Lookbook & Pose',
+                            '40%',
+                            CurrencyFormatter.formatVnd(StylingRequestProvider.instance.stageGrossAmount(3)),
+                            AppColors.porcelainSmoke,
+                            AppColors.petrol,
+                          ),
 
                           const SizedBox(height: 20),
 
