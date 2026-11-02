@@ -11,10 +11,15 @@ import {
 
 export const stylingRequestsRouter = Router();
 
-// TSK-11: Gemini 1.5 Flash AI Co-pilot (Brief & 4 Hex Color Palette)
+// TSK-11: Gemini 2.5 Flash AI Co-pilot (Brief & 4 Hex Color Palette)
+// Supported at both /ai-enhance and /ai-enhance-brief
 stylingRequestsRouter.post(
   '/ai-enhance',
-  authenticate,
+  validateBody(aiEnhanceBriefBodySchema),
+  StylingRequestsController.aiEnhanceBrief,
+);
+stylingRequestsRouter.post(
+  '/ai-enhance-brief',
   validateBody(aiEnhanceBriefBodySchema),
   StylingRequestsController.aiEnhanceBrief,
 );

@@ -49,13 +49,41 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
   }
 
   Future<void> _enhanceBriefWithGemini() async {
+    final userPrompt = _conceptController.text.trim();
+    final lowerPrompt = userPrompt.toLowerCase();
+
+    String detectedOccasion = 'Streetwear Event';
+    String detectedVibe = _selectedVibe;
+
+    if (lowerPrompt.contains('biển') ||
+        lowerPrompt.contains('beach') ||
+        lowerPrompt.contains('resort') ||
+        lowerPrompt.contains('hè') ||
+        lowerPrompt.contains('nghỉ dưỡng')) {
+      detectedOccasion = 'Du lịch biển / Resort';
+      detectedVibe = '#RESORT_BEACH';
+    } else if (lowerPrompt.contains('tiệc') ||
+        lowerPrompt.contains('gala') ||
+        lowerPrompt.contains('cưới') ||
+        lowerPrompt.contains('old money') ||
+        lowerPrompt.contains('sang trọng')) {
+      detectedOccasion = 'Dạ tiệc sang trọng';
+      detectedVibe = '#OLD_MONEY';
+    } else if (lowerPrompt.contains('công sở') ||
+        lowerPrompt.contains('đi làm') ||
+        lowerPrompt.contains('office') ||
+        lowerPrompt.contains('họp')) {
+      detectedOccasion = 'Công sở / Đi làm';
+      detectedVibe = '#MINIMAL_WORK';
+    }
+
     final result = await StylingRequestProvider.instance.enhanceBriefWithGemini(
       heightCm: 175,
       weightKg: 65,
       bodyType: 'Thon gọn',
-      occasion: 'Streetwear Event',
-      vibe: _selectedVibe,
-      rawBrief: _conceptController.text,
+      occasion: detectedOccasion,
+      vibe: detectedVibe,
+      rawBrief: userPrompt.isNotEmpty ? userPrompt : 'Streetwear Minimalism',
     );
 
     if (!mounted) return;

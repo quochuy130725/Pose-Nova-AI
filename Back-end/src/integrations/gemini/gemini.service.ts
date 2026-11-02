@@ -17,12 +17,12 @@ export interface EnhancedBriefResult {
   colorPalette: [string, string, string, string];
   recommendedStyle: string;
   bodyProportionTip: string;
-  provider: 'gemini-1.5-flash' | 'posenova-stylist-fallback';
+  provider: 'gemini-2.5-flash' | 'posenova-stylist-fallback';
   latencyMs: number;
 }
 
 const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
-const GEMINI_TIMEOUT_MS = 2400; // Strictly under 3000ms SLA
+const GEMINI_TIMEOUT_MS = 8000; // Generative AI model inference timeout
 
 interface StylePreset {
   style: string;
@@ -33,6 +33,15 @@ interface StylePreset {
 function selectStylePreset(text: string): StylePreset {
   const lower = text.toLowerCase();
 
+  if (/biển|beach|resort|summer|hè|nghỉ dưỡng|bãi biển|du lịch|đảo|dạo biển/.test(lower)) {
+    return {
+      style: 'RESORT_BEACH',
+      palette: ['#0284C7', '#38BDF8', '#FDE047', '#F8FAFC'],
+      fabricNote:
+        'sơ mi linen form rộng thoáng mát, quần short cạp cao kết hợp kính râm và mũ cói rộng vành',
+    };
+  }
+
   if (/cyber|concert|festival|rave|club|neon|party|đêm|nhạc/.test(lower)) {
     return {
       style: 'CYBER_AW26',
@@ -42,7 +51,7 @@ function selectStylePreset(text: string): StylePreset {
     };
   }
 
-  if (/wedding|date|dinner|gala|old money|classic|tiệc|cưới|hẹn hò|sang trọng/.test(lower)) {
+  if (/wedding|date|dinner|gala|old money|classic|tiệc|cưới|hẹn hò|sang trọng|quý phái/.test(lower)) {
     return {
       style: 'OLD_MONEY',
       palette: ['#1C1917', '#F5F5F4', '#92400E', '#1E3A8A'],
@@ -51,12 +60,12 @@ function selectStylePreset(text: string): StylePreset {
     };
   }
 
-  if (/office|work|business|interview|minimal|công sở|đi làm|họp|tối giản/.test(lower)) {
+  if (/office|work|business|interview|minimal|công sở|đi làm|họp|tối giản|thanh lịch/.test(lower)) {
     return {
       style: 'MINIMALIST',
       palette: ['#18181B', '#F4F4F5', '#D6D3D1', '#78716C'],
       fabricNote:
-        'clean monochrome tailoring,relaxed pleated trousers, and architectural monochrome layering',
+        'clean monochrome tailoring, relaxed pleated trousers, and architectural monochrome layering',
     };
   }
 
@@ -160,7 +169,7 @@ export class GeminiService {
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash',
         generationConfig: {
           responseMimeType: 'application/json',
           temperature: 0.65,
@@ -168,12 +177,12 @@ export class GeminiService {
       });
 
       const prompt = `You are an elite personal fashion stylist on PoseNova AI.
-Analyze the client's metrics and occasion, then return ONLY valid JSON with exact keys:
+Analyze the client's metrics, occasion, vibe, and notes, then return ONLY valid JSON with exact keys:
 {
-  "enhancedBrief": "concise 2-3 sentence professional styling brief tailored to height, weight, and occasion",
+  "enhancedBrief": "Concise 2-3 sentence professional styling brief in Vietnamese. Specifically tailor the outfit, materials, and silhouette to the client's requested style (e.g. if beach/resort, suggest linen, swim/board shorts, light resort wear, straw hat, sunglasses; if gala/wedding, suggest evening wear; if streetwear, suggest street tech/oversized; etc.)",
   "suggestedPalette": ["#HEX1", "#HEX2", "#HEX3", "#HEX4"],
-  "recommendedStyle": "ONE OF: STREETWEAR, MINIMALIST, CYBER_AW26, OLD_MONEY, Y2K",
-  "bodyProportionTip": "1 concise sentence on silhouette ratio for ${input.heightCm}cm / ${input.weightKg}kg"
+  "recommendedStyle": "ONE OF: RESORT_BEACH, STREETWEAR, MINIMALIST, CYBER_AW26, OLD_MONEY, Y2K",
+  "bodyProportionTip": "1 concise sentence in Vietnamese on silhouette ratio for ${input.heightCm}cm / ${input.weightKg}kg"
 }
 
 Client profile:
@@ -182,12 +191,12 @@ Client profile:
 - Body Type: ${input.bodyType ?? 'Standard'}
 - Occasion: ${input.occasion}
 - Preferred Vibe: ${input.vibe ?? 'Modern Editorial'}
-- Initial Notes: ${input.briefText ?? 'None'}
+- Client Notes / Request: ${input.briefText ?? 'None'}
 - Budget (VND): ${input.totalBudget ?? 2500000}`;
 
       const geminiPromise = model.generateContent(prompt);
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Gemini SLA timeout (2400ms)')), GEMINI_TIMEOUT_MS);
+        setTimeout(() => reject(new Error('Gemini SLA timeout (8000ms)')), GEMINI_TIMEOUT_MS);
       });
 
       const response = await Promise.race([geminiPromise, timeoutPromise]);
@@ -217,11 +226,11 @@ Client profile:
           typeof parsed.bodyProportionTip === 'string' && parsed.bodyProportionTip.trim()
             ? parsed.bodyProportionTip.trim()
             : fallbackResult.bodyProportionTip,
-        provider: 'gemini-1.5-flash',
+        provider: 'gemini-2.5-flash',
         latencyMs: Date.now() - startedAt,
       };
     } catch {
-      // Resilient fallback guarantees < 3s response and 0 demo failures
+      // Resilient fallback guarantees 0 failure even during network glitches
       return {
         ...fallbackResult,
         latencyMs: Date.now() - startedAt,

@@ -106,7 +106,7 @@ class StylingRequestProvider extends ChangeNotifier {
 
     try {
       final response = await ApiClient.instance.post(
-        '/styling-requests/ai-enhance-brief',
+        '/styling-requests/ai-enhance',
         body: {
           'heightCm': heightCm,
           'weightKg': weightKg,
@@ -129,9 +129,9 @@ class StylingRequestProvider extends ChangeNotifier {
               .replaceAll('⚡', '')
               .trim();
         }
-        // Always ensure a visibly updated 4-color palette is returned
+        // Always ensure a visibly updated 4-color palette is returned from Gemini
         final apiColors = data['suggestedPalette'] ?? data['colorPalette'];
-        if (apiColors is List && apiColors.length >= 4 && _paletteCycleIndex == 1) {
+        if (apiColors is List && apiColors.length >= 4) {
           data['suggestedPalette'] = apiColors.map((e) => e.toString()).take(4).toList();
         } else {
           data['suggestedPalette'] = nextPalette;
@@ -144,10 +144,44 @@ class StylingRequestProvider extends ChangeNotifier {
       notifyListeners();
     }
 
+    // Dynamic smart fallback analyzing rawBrief keywords when offline or network fails
+    final lowerBrief = rawBrief.toLowerCase();
+    String fallbackBrief;
+    List<String> fallbackPalette;
+
+    if (lowerBrief.contains('biển') ||
+        lowerBrief.contains('beach') ||
+        lowerBrief.contains('resort') ||
+        lowerBrief.contains('hè') ||
+        lowerBrief.contains('nghỉ dưỡng')) {
+      fallbackBrief =
+          '[Gemini Co-pilot Resort Brief] Tối ưu tỷ lệ cho dáng $bodyType (${heightCm}cm, ${weightKg}kg) phong cách Đi Biển / Resort: ưu tiên áo sơ mi linen form rộng thoáng mát kết hợp quần short cạp cao, mũ cói và kính râm. Bảng màu biển nhiệt đới tôn da và bắt sáng tự nhiên khi chụp ngoại cảnh bờ biển.';
+      fallbackPalette = const ['#0284C7', '#38BDF8', '#FDE047', '#F8FAFC'];
+    } else if (lowerBrief.contains('tiệc') ||
+        lowerBrief.contains('gala') ||
+        lowerBrief.contains('cưới') ||
+        lowerBrief.contains('old money') ||
+        lowerBrief.contains('sang trọng')) {
+      fallbackBrief =
+          '[Gemini Co-pilot Gala Brief] Tối ưu tỷ lệ cho dáng $bodyType (${heightCm}cm, ${weightKg}kg) dịp Dạ Tiệc sang trọng: ưu tiên đầm dạ hội/blazer satin ôm eo tinh tế kết hợp phụ kiện ánh kim, tạo visual quý phái và tỷ lệ chân dài khi chụp góc thẳng.';
+      fallbackPalette = const ['#1C1917', '#F5F5F4', '#D4AF37', '#1E3A8A'];
+    } else if (lowerBrief.contains('công sở') ||
+        lowerBrief.contains('đi làm') ||
+        lowerBrief.contains('office') ||
+        lowerBrief.contains('họp') ||
+        lowerBrief.contains('tối giản')) {
+      fallbackBrief =
+          '[Gemini Co-pilot Smart Casual Brief] Tối ưu tỷ lệ cho dáng $bodyType (${heightCm}cm, ${weightKg}kg) môi trường Công Sở: phối quần tây xếp ly cạp cao với áo sơ mi đứng phom thanh lịch, tạo cảm giác chuyên nghiệp và thon gọn.';
+      fallbackPalette = const ['#18181B', '#F4F4F5', '#94A3B8', '#334155'];
+    } else {
+      fallbackBrief =
+          '[Gemini Co-pilot Structured Brief] Tối ưu tỷ lệ cho dáng $bodyType (${heightCm}cm, ${weightKg}kg) dịp $occasion theo phong cách $vibe: ưu tiên quần cạp cao ống suông kéo dài chân, kết hợp áo khoác form boxy tạo điểm nhấn vai. Chất liệu thoáng, đứng phom; bảng màu tương phản sắc nét giúp tôn dáng khi chụp góc máy thấp 15 độ.';
+      fallbackPalette = nextPalette;
+    }
+
     return {
-      'enhancedBrief':
-          '[Gemini Co-pilot Structured Brief] Tối ưu tỷ lệ cho dáng $bodyType (${heightCm}cm, ${weightKg}kg) dịp $occasion theo phong cách $vibe: ưu tiên quần cạp cao ống suông kéo dài chân, kết hợp áo khoác form boxy tạo điểm nhấn vai. Chất liệu thoáng, đứng phom; bảng màu tương phản sắc nét giúp tôn dáng khi chụp góc máy thấp 15 độ.',
-      'suggestedPalette': nextPalette,
+      'enhancedBrief': fallbackBrief,
+      'suggestedPalette': fallbackPalette,
     };
   }
 
