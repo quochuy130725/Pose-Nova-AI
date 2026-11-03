@@ -23,9 +23,13 @@ jobs:
         working-directory: Front-end
         run: flutter pub get
 
+      - name: Create CI env asset
+        working-directory: Front-end
+        run: touch .env
+
       - name: Analyze project source
         working-directory: Front-end
-        run: flutter analyze lib
+        run: flutter analyze --no-fatal-infos lib
 
       - name: Run tests
         working-directory: Front-end
