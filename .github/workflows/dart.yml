@@ -23,6 +23,10 @@ jobs:
         working-directory: Front-end
         run: flutter pub get
 
+      - name: Create required .env asset
+        working-directory: Front-end
+        run: touch .env
+
       - name: Analyze project source
         working-directory: Front-end
         run: flutter analyze --no-fatal-infos lib
