@@ -20,6 +20,7 @@ enum RequestStatus {
   IN_PROGRESS
   ESCROW_FROZEN
   COMPLETED
+  CANCELLED
 }
 
 enum MilestoneStatus {
@@ -29,6 +30,7 @@ enum MilestoneStatus {
   REVISION_REQUESTED
   APPROVED
   DISPUTED
+  CANCELLED
 }
 
 enum TransactionType {
@@ -189,6 +191,7 @@ model RequestMilestone {
   deliverableUrl    String?               @map("deliverable_url")
   poseLandmarksJson Json?                 @map("pose_landmarks_json")
   status            MilestoneStatus       @default(LOCKED)
+  dueAt             DateTime?             @map("due_at")
   autoReleaseAt     DateTime?             @map("auto_release_at")
   submittedAt       DateTime?             @map("submitted_at")
   approvedAt        DateTime?             @map("approved_at")
@@ -220,7 +223,7 @@ model MilestoneSubmission {
 
 model PaymentTransaction {
   id           String            @id @default(uuid())
-  requestId    String            @map("request_id")
+  requestId    String?           @map("request_id")
   milestoneId  String?           @map("milestone_id")
   walletId     String            @map("wallet_id")
   type         TransactionType
@@ -232,7 +235,7 @@ model PaymentTransaction {
   status       TransactionStatus @default(COMPLETED)
   createdAt    DateTime          @default(now()) @map("created_at")
 
-  request      StylingRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  request      StylingRequest?   @relation(fields: [requestId], references: [id], onDelete: Cascade)
   milestone    RequestMilestone? @relation(fields: [milestoneId], references: [id])
   wallet       Wallet            @relation(fields: [walletId], references: [id])
 

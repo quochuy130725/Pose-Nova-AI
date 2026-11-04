@@ -73,7 +73,8 @@ export class EscrowWalletService {
       for (const m of contract.milestones) {
         if (
           m.status !== MilestoneStatus.APPROVED &&
-          m.status !== MilestoneStatus.DISPUTED
+          m.status !== MilestoneStatus.DISPUTED &&
+          m.status !== MilestoneStatus.CANCELLED
         ) {
           const g = Number(m.grossAmount);
           const n = Number(m.netPayout);
@@ -216,25 +217,9 @@ export class EscrowWalletService {
         );
       }
 
-      // Resolve anchor contract ID for ledger traceability
-      const anchorContract =
-        (await tx.stylingRequest.findFirst({
-          where: {
-            OR: [{ stylistId: user.userId }, { clientId: user.userId }],
-          },
-          orderBy: { updatedAt: 'desc' },
-        })) ??
-        (await tx.stylingRequest.findFirst({
-          orderBy: { createdAt: 'desc' },
-        }));
-
-      if (!anchorContract) {
-        throw new AppError('No styling contract history available to anchor withdrawal ledger', 400);
-      }
-
       const withdrawalTx = await tx.paymentTransaction.create({
         data: {
-          requestId: anchorContract.id,
+          requestId: null,
           milestoneId: null,
           walletId: wallet.id,
           type: TransactionType.WITHDRAWAL,

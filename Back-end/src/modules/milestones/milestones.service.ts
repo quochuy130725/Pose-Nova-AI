@@ -138,6 +138,7 @@ export class MilestonesService {
           deliverableUrl: input.deliverableUrl,
           stylistNotes: input.stylistNotes ?? milestone.stylistNotes,
           ...(normalizedPoseJson !== undefined ? { poseLandmarksJson: normalizedPoseJson } : {}),
+          dueAt: null,
           submittedAt,
           autoReleaseAt,
         },
@@ -358,9 +359,13 @@ export class MilestonesService {
       });
 
       if (nextStageCandidate && nextStageCandidate.status === MilestoneStatus.LOCKED) {
+        const nextStageDueAt = new Date(now.getTime() + SLA_HOURS * 60 * 60 * 1000);
         const unlocked = await tx.requestMilestone.update({
           where: { id: nextStageCandidate.id },
-          data: { status: MilestoneStatus.ACTIVE },
+          data: {
+            status: MilestoneStatus.ACTIVE,
+            dueAt: nextStageDueAt,
+          },
         });
         unlockedNextStage = {
           id: unlocked.id,
@@ -496,6 +501,7 @@ export class MilestonesService {
           revisionCount: { increment: 1 },
           status: MilestoneStatus.REVISION_REQUESTED,
           clientFeedback: input.feedback,
+          dueAt: new Date(Date.now() + SLA_HOURS * 60 * 60 * 1000),
           autoReleaseAt: null, // Pause 48h SLA timer while Stylist works on revision
         },
       });

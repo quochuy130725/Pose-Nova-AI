@@ -110,7 +110,7 @@ export class SepayService {
       },
     });
 
-    if (existingTx) {
+    if (existingTx && existingTx.request) {
       return {
         alreadyProcessed: true,
         idempotent: true,
@@ -132,6 +132,7 @@ export class SepayService {
             platformFeeAmount: gross - net,
             netPayout: net,
             status: m.status,
+            dueAt: m.dueAt,
           };
         }),
       };
@@ -283,6 +284,7 @@ export class SepayService {
 
       // 4. Create 3 Milestone Stages (30% ACTIVE - 30% LOCKED - 40% LOCKED)
       if (freshRequest.milestones.length === 0) {
+        const stage1DueAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
         await tx.requestMilestone.createMany({
           data: breakdown.map((stage) => ({
             requestId: freshRequest.id,
@@ -296,6 +298,7 @@ export class SepayService {
             maxRevisions: MAX_REVISIONS,
             status:
               stage.stageOrder === 1 ? MilestoneStatus.ACTIVE : MilestoneStatus.LOCKED,
+            dueAt: stage.stageOrder === 1 ? stage1DueAt : null,
           })),
         });
       }

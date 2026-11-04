@@ -53,6 +53,7 @@ export class StylingRequestsService {
     deliverableUrl: string | null;
     poseLandmarksJson: Prisma.JsonValue;
     status: string;
+    dueAt?: Date | null;
     autoReleaseAt: Date | null;
     submittedAt: Date | null;
     approvedAt: Date | null;
@@ -101,6 +102,7 @@ export class StylingRequestsService {
       deliverableUrl: milestone.deliverableUrl,
       poseLandmarksJson: milestone.poseLandmarksJson,
       status: milestone.status,
+      dueAt: milestone.dueAt ?? null,
       autoReleaseAt: milestone.autoReleaseAt,
       submittedAt: milestone.submittedAt,
       approvedAt: milestone.approvedAt,
@@ -166,7 +168,7 @@ export class StylingRequestsService {
     const lockedEscrowNetAmount =
       milestones.length > 0
         ? stageBreakdown
-            .filter((s) => s.status !== 'APPROVED' && s.status !== 'DISPUTED')
+            .filter((s) => s.status !== 'APPROVED' && s.status !== 'DISPUTED' && s.status !== 'CANCELLED')
             .reduce((sum, s) => sum + s.netPayout, 0)
         : 0;
 
