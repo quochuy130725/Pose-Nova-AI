@@ -257,7 +257,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Virtual Try-On & Managed Escrow Styling Atelier',
+                        t.isVi
+                            ? 'Thử đồ ảo & Xưởng Phối Đồ Ký Quỹ AI'
+                            : 'Virtual Try-On & Managed Escrow Styling Atelier',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -305,7 +307,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ),
                                         alignment: Alignment.center,
                                         child: Text(
-                                          'Đăng Nhập',
+                                          t.authLogin,
                                           style: GoogleFonts.plusJakartaSans(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w800,
@@ -321,7 +323,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         setState(() {
                                           _isSignUp = true;
                                           if (_fullNameController.text.isEmpty) {
-                                            _fullNameController.text = 'Người dùng mới';
+                                            _fullNameController.text = t.isVi ? 'Người dùng mới' : 'New User';
                                           }
                                         });
                                       },
@@ -334,7 +336,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ),
                                         alignment: Alignment.center,
                                         child: Text(
-                                          'Tạo Tài Khoản',
+                                          t.authSignUp,
                                           style: GoogleFonts.plusJakartaSans(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w800,
@@ -353,7 +355,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             // If Sign Up: Full Name & Role Switcher
                             if (_isSignUp) ...[
                               Text(
-                                'Họ và Tên:',
+                                t.authFullName,
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
@@ -369,7 +371,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   color: AppColors.ink,
                                 ),
                                 decoration: InputDecoration(
-                                  hintText: 'Nhập họ tên của bạn...',
+                                  hintText: t.isVi ? 'Nhập họ tên của bạn...' : 'Enter your full name...',
                                   filled: true,
                                   fillColor: const Color(0xFFFFF8F9),
                                   prefixIcon: const Icon(Icons.person_outline, size: 18, color: AppColors.ink),
@@ -388,7 +390,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                               // Role Selection (Client vs Stylist)
                               Text(
-                                'Vai Trò Tài Khoản:',
+                                t.authRoleSelect,
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
@@ -417,7 +419,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ),
                                         alignment: Alignment.center,
                                         child: Text(
-                                          '👤 Khách Hàng (Client)',
+                                          t.authRoleClient,
                                           style: GoogleFonts.plusJakartaSans(
                                             fontSize: 11.5,
                                             fontWeight: FontWeight.w800,
@@ -449,7 +451,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ),
                                         alignment: Alignment.center,
                                         child: Text(
-                                          'Stylist Studio',
+                                          t.authRoleStylist,
                                           style: GoogleFonts.plusJakartaSans(
                                             fontSize: 11.5,
                                             fontWeight: FontWeight.w800,
@@ -522,7 +524,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: AppColors.ink,
                               ),
                               decoration: InputDecoration(
-                                hintText: 'Mật khẩu ít nhất 6 ký tự...',
+                                hintText: t.isVi ? 'Mật khẩu ít nhất 6 ký tự...' : 'Password (min 6 characters)...',
                                 filled: true,
                                 fillColor: const Color(0xFFFFF8F9),
                                 prefixIcon: const Icon(Icons.lock_outline, size: 18, color: AppColors.ink),
@@ -582,7 +584,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           ),
                                           const SizedBox(width: 8),
                                           Text(
-                                            _isSignUp ? 'Tạo Tài Khoản Mới →' : 'Đăng Nhập Vào Hệ Thống →',
+                                            _isSignUp ? t.authSubmitSignUp : t.authSubmitLogin,
                                             style: GoogleFonts.plusJakartaSans(
                                               color: Colors.white,
                                               fontWeight: FontWeight.w800,
@@ -606,7 +608,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 12),
                                   child: Text(
-                                    'HOẶC ĐĂNG NHẬP NHANH',
+                                    t.authQuickLoginHeader,
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.w800,

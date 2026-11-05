@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../core/localization/app_language.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
@@ -49,108 +50,119 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.canvas,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          _isDispute ? 'Dispute Resolution' : 'Review & Rating',
-          style: AppTheme.titleStyle.copyWith(fontSize: 18),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: BrutalistBadge(
-              label: _isDispute ? 'ESCROW FROZEN' : 'VERIFIED RATING',
-              backgroundColor: _isDispute ? AppColors.vermilion : AppColors.cyber,
-              textColor: _isDispute ? Colors.white : AppColors.ink,
-              isMonospace: true,
+    return ListenableBuilder(
+      listenable: AppLanguageController.instance,
+      builder: (context, _) {
+        final isVi = AppLanguageController.instance.isVietnamese;
+        return Scaffold(
+          backgroundColor: AppColors.canvas,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: Text(
+              _isDispute
+                  ? (isVi ? 'Giải Quyết Tranh Chấp' : 'Dispute Resolution')
+                  : (isVi ? 'Đánh Giá & Nhận Xét' : 'Review & Rating'),
+              style: AppTheme.titleStyle.copyWith(fontSize: 18),
             ),
-          ),
-        ],
-      ),
-      body: TechnicalGridBackground(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 32.0),
-          child: Column(
-            children: [
-              // Mode Switcher Banner
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: AppColors.hairlineBorder, width: AppColors.cardBorderWidth),
-                  boxShadow: AppColors.chipShadow,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _isDispute = false),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            gradient: !_isDispute ? AppColors.primaryGradient : null,
-                            borderRadius: BorderRadius.circular(999),
-                            boxShadow: !_isDispute ? AppColors.buttonShadow : null,
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Chế độ Đánh giá (Review)',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: !_isDispute ? Colors.white : AppColors.textMuted,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _isDispute = true),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            color: _isDispute ? AppColors.vermilion : Colors.transparent,
-                            borderRadius: BorderRadius.circular(999),
-                            boxShadow: _isDispute ? AppColors.chipShadow : null,
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Chế độ Khiếu nại (Dispute)',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: _isDispute ? Colors.white : AppColors.textMuted,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: BrutalistBadge(
+                  label: _isDispute
+                      ? (isVi ? 'ĐÓNG BĂNG KÝ QUỸ' : 'ESCROW FROZEN')
+                      : (isVi ? 'ĐÁNH GIÁ XÁC THỰC' : 'VERIFIED RATING'),
+                  backgroundColor: _isDispute ? AppColors.vermilion : AppColors.cyber,
+                  textColor: _isDispute ? Colors.white : AppColors.ink,
+                  isMonospace: true,
                 ),
               ),
-
-              const SizedBox(height: 18),
-
-              if (!_isDispute) _buildReviewMode() else _buildDisputeMode(),
             ],
           ),
-        ),
-      ),
+          body: TechnicalGridBackground(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 32.0),
+              child: Column(
+                children: [
+                  // Mode Switcher Banner
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: AppColors.hairlineBorder, width: AppColors.cardBorderWidth),
+                      boxShadow: AppColors.chipShadow,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _isDispute = false),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                gradient: !_isDispute ? AppColors.primaryGradient : null,
+                                borderRadius: BorderRadius.circular(999),
+                                boxShadow: !_isDispute ? AppColors.buttonShadow : null,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                isVi ? 'Chế độ Đánh giá' : 'Review Mode',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: !_isDispute ? Colors.white : AppColors.textMuted,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _isDispute = true),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: _isDispute ? AppColors.vermilion : Colors.transparent,
+                                borderRadius: BorderRadius.circular(999),
+                                boxShadow: _isDispute ? AppColors.chipShadow : null,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                isVi ? 'Chế độ Khiếu nại' : 'Dispute Mode',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: _isDispute ? Colors.white : AppColors.textMuted,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  if (!_isDispute) _buildReviewMode() else _buildDisputeMode(),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
   /// Chế độ A – Đánh giá sau khi hoàn tất Mốc 3 (Thực thể REVIEW)
   Widget _buildReviewMode() {
+    final isVi = AppLanguageController.instance.isVietnamese;
     return BrutalistCard(
       padding: const EdgeInsets.all(22),
       child: Column(
@@ -161,7 +173,7 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
             children: [
               Expanded(
                 child: Text(
-                  'Rate Your Experience',
+                  isVi ? 'Đánh Giá Dịch Vụ' : 'Rate Your Experience',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -169,8 +181,8 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
                   ),
                 ),
               ),
-              const BrutalistBadge(
-                label: '3 Stages Done',
+              BrutalistBadge(
+                label: isVi ? 'Hoàn tất 3 chặng' : '3 Stages Done',
                 backgroundColor: AppColors.warmAmber,
                 isMonospace: false,
               ),
@@ -207,7 +219,7 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
           const SizedBox(height: 20),
 
           Text(
-            'Tags Khen Ngợi Nhanh:',
+            isVi ? 'Tags Khen Ngợi Nhanh:' : 'Quick Compliments:',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -264,7 +276,9 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
               color: AppColors.petrol,
             ),
             decoration: InputDecoration(
-              hintText: 'Nhận xét chi tiết về dịch vụ tư vấn của Stylist Maya Trần...',
+              hintText: isVi
+                  ? 'Nhận xét chi tiết về dịch vụ tư vấn của Stylist Maya Trần...'
+                  : 'Share your detailed review for Stylist Maya Trần...',
               filled: true,
               fillColor: AppColors.porcelainSmoke,
               border: OutlineInputBorder(
@@ -298,7 +312,9 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Đính kèm AI Pose Score: ${PoseCaptureProvider.instance.lastPoseMatchScore.toStringAsFixed(1)}% • Stylist Rating: ${AuthProvider.instance.stylistRatingAvg.toStringAsFixed(2)} ★',
+                    isVi
+                        ? 'Đính kèm AI Pose Score: ${PoseCaptureProvider.instance.lastPoseMatchScore.toStringAsFixed(1)}% • Điểm Stylist: ${AuthProvider.instance.stylistRatingAvg.toStringAsFixed(2)} ★'
+                        : 'Attached AI Pose Score: ${PoseCaptureProvider.instance.lastPoseMatchScore.toStringAsFixed(1)}% • Stylist Rating: ${AuthProvider.instance.stylistRatingAvg.toStringAsFixed(2)} ★',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w800,
@@ -314,8 +330,8 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
 
           BrutalistButton(
             text: _isSubmitting
-                ? 'Đang gửi đánh giá lên hệ thống...'
-                : 'Submit Review & Open AI Camera →',
+                ? (isVi ? 'Đang gửi đánh giá lên hệ thống...' : 'Submitting review...')
+                : (isVi ? 'Gửi Đánh Giá & Mở AI Camera →' : 'Submit Review & Open AI Camera →'),
             backgroundColor: AppColors.warmAmber,
             textColor: AppColors.petrol,
             height: 48,
@@ -339,7 +355,9 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
                       SnackBar(
                         backgroundColor: AppColors.petrol,
                         content: Text(
-                          'Đã gửi đánh giá $_selectedRating ★ thành công! Điểm trung bình Stylist Maya Trần: ${AuthProvider.instance.stylistRatingAvg.toStringAsFixed(2)} ★ (${AuthProvider.instance.stylistTotalReviews} đánh giá)',
+                          isVi
+                              ? 'Đã gửi đánh giá $_selectedRating ★ thành công! Điểm trung bình Stylist Maya Trần: ${AuthProvider.instance.stylistRatingAvg.toStringAsFixed(2)} ★ (${AuthProvider.instance.stylistTotalReviews} đánh giá)'
+                              : 'Submitted $_selectedRating ★ review! Stylist Maya Trần rating: ${AuthProvider.instance.stylistRatingAvg.toStringAsFixed(2)} ★ (${AuthProvider.instance.stylistTotalReviews} reviews)',
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -360,6 +378,7 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
 
   /// Chế độ B – Mở Tranh chấp khi quá 2 lần sửa (Thực thể DISPUTE)
   Widget _buildDisputeMode() {
+    final isVi = AppLanguageController.instance.isVietnamese;
     return BrutalistCard(
       padding: const EdgeInsets.all(22),
       child: Column(
@@ -382,8 +401,8 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              const BrutalistBadge(
-                label: 'Resolution: Open',
+              BrutalistBadge(
+                label: isVi ? 'Đang xử lý' : 'Resolution: Open',
                 backgroundColor: AppColors.vermilion,
                 textColor: Colors.white,
                 isMonospace: false,
@@ -406,7 +425,7 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Quỹ Ký Quỹ Đang Bị Phong Tỏa:',
+                  isVi ? 'Quỹ Ký Quỹ Đang Bị Phong Tỏa:' : 'Frozen Escrow Balance:',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
@@ -415,7 +434,7 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Frozen Escrow: 70% (1.750.000₫)',
+                  isVi ? 'Đang đóng băng: 70% (1.750.000₫)' : 'Frozen Escrow: 70% (1.750.000₫)',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
@@ -424,7 +443,9 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Chỉ có 30% Mốc 1 (750.000₫) đã giải ngân trước đó.',
+                  isVi
+                      ? 'Chỉ có 30% Mốc 1 (750.000₫) đã giải ngân trước đó.'
+                      : 'Only 30% Stage 01 (750.000₫) was previously released.',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 11,
                     color: AppColors.textMuted,
@@ -437,7 +458,7 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
           const SizedBox(height: 18),
 
           Text(
-            'Lý Do Khiếu Nại (Dispute Reason):',
+            isVi ? 'Lý Do Khiếu Nại:' : 'Dispute Reason:',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               fontWeight: FontWeight.w800,
@@ -494,7 +515,7 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
           const SizedBox(height: 18),
 
           BrutalistButton(
-            text: 'Freeze Escrow & Request Refund',
+            text: isVi ? 'Đóng Băng Ký Quỹ & Yêu Cầu Hoàn Tiền' : 'Freeze Escrow & Request Refund',
             backgroundColor: AppColors.vermilion,
             textColor: Colors.white,
             height: 48,
@@ -524,7 +545,7 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Đã đóng băng ký quỹ',
+                        isVi ? 'Đã đóng băng ký quỹ' : 'Escrow Frozen',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -534,7 +555,9 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
                     ],
                   ),
                   content: Text(
-                    '1.750.000₫ (70% còn lại) đã được phong tỏa để hoàn tiền về tài khoản ngân hàng của khách.',
+                    isVi
+                        ? '1.750.000₫ (70% còn lại) đã được phong tỏa để hoàn tiền về tài khoản ngân hàng của khách.'
+                        : '1.750.000₫ (remaining 70%) has been frozen for refund to the client bank account.',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12.5,
                       height: 1.4,
@@ -548,7 +571,7 @@ class _DisputeReviewScreenState extends State<DisputeReviewScreen> {
                         Navigator.pop(context);
                       },
                       child: Text(
-                        'Đóng',
+                        isVi ? 'Đóng' : 'Close',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,

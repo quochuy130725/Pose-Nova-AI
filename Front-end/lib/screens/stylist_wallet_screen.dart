@@ -163,7 +163,7 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      'Chưa có giao dịch giải ngân nào.',
+                      isEn ? 'No payout transactions yet.' : 'Chưa có giao dịch giải ngân nào.',
                       style: GoogleFonts.plusJakartaSans(color: AppColors.textMuted),
                     ),
                   )
@@ -214,7 +214,7 @@ class _StylistWalletScreenState extends State<StylistWalletScreen> {
                         const Icon(Icons.logout, size: 18, color: AppColors.coralOrange),
                         const SizedBox(width: 8),
                         Text(
-                          'Đăng Xuất Tài Khoản (Logout)',
+                          isEn ? 'Log Out Account' : 'Đăng Xuất Tài Khoản',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w800,

@@ -52,7 +52,9 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'SePay Webhook Verified!',
+                AppLanguageController.instance.isEnglish
+                    ? 'SePay Webhook Verified!'
+                    : 'Đã Xác Thực SePay Webhook!',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 18,
@@ -62,7 +64,9 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                '${CurrencyFormatter.formatVnd(StylingRequestProvider.instance.activeTotalBudget)} đã vào Quỹ Ký Quỹ Đóng Băng (${StylingRequestProvider.instance.activeRequestDisplayCode}).\nTự động khóa 85% Net & kích hoạt 3 chặng 30-30-40!',
+                AppLanguageController.instance.isEnglish
+                    ? '${CurrencyFormatter.formatVnd(StylingRequestProvider.instance.activeTotalBudget)} locked in Frozen Escrow (${StylingRequestProvider.instance.activeRequestDisplayCode}).\n85% Net secured & 30-30-40 milestones activated!'
+                    : '${CurrencyFormatter.formatVnd(StylingRequestProvider.instance.activeTotalBudget)} đã vào Quỹ Ký Quỹ Đóng Băng (${StylingRequestProvider.instance.activeRequestDisplayCode}).\nTự động khóa 85% Net & kích hoạt 3 chặng 30-30-40!',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 12.5,
@@ -73,7 +77,9 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
               ),
               const SizedBox(height: 20),
               BrutalistButton(
-                text: 'Vào Workspace Tiến Độ →',
+                text: AppLanguageController.instance.isEnglish
+                    ? 'Open Escrow Workspace →'
+                    : 'Vào Workspace Tiến Độ →',
                 backgroundColor: AppColors.warmAmber,
                 textColor: AppColors.petrol,
                 height: 48,
@@ -97,10 +103,13 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isEn = AppLanguageController.instance.isEnglish;
-    final cleanOrderCode = StylingRequestProvider.instance.activeOrderCode.replaceAll('#', '').trim();
+    return ListenableBuilder(
+      listenable: AppLanguageController.instance,
+      builder: (context, _) {
+        final isEn = AppLanguageController.instance.isEnglish;
+        final cleanOrderCode = StylingRequestProvider.instance.activeOrderCode.replaceAll('#', '').trim();
 
-    return Scaffold(
+        return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -226,7 +235,7 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Sơ Đồ Giải Ngân 3 Giai Đoạn',
+                                isEn ? '3-Stage Milestone Breakdown' : 'Sơ Đồ Giải Ngân 3 Giai Đoạn',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w800,
@@ -256,7 +265,7 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
                           const SizedBox(height: 8),
                           _buildEscrowBarItem(
                             '02',
-                            'Outfit Selection & Tags',
+                            isEn ? 'Outfit Selection & Tags' : 'Phối Đồ & Gắn Thẻ',
                             '30%',
                             CurrencyFormatter.formatVnd(StylingRequestProvider.instance.stageGrossAmount(2)),
                             AppColors.warmAmber,
@@ -265,7 +274,7 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
                           const SizedBox(height: 8),
                           _buildEscrowBarItem(
                             '03',
-                            'Final Lookbook & Pose',
+                            isEn ? 'Final Lookbook & Pose' : 'Hoàn Thiện & Dáng Mẫu',
                             '40%',
                             CurrencyFormatter.formatVnd(StylingRequestProvider.instance.stageGrossAmount(3)),
                             AppColors.porcelainSmoke,
@@ -322,7 +331,7 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
                                         boxShadow: AppColors.chipShadow,
                                       ),
                                       child: Text(
-                                        'Nội dung CK: $transferContent',
+                                        isEn ? 'Transfer Note: $transferContent' : 'Nội dung CK: $transferContent',
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w800,
@@ -339,7 +348,9 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
                           const SizedBox(height: 16),
 
                           Text(
-                            'Cổng SePay tự động phát hiện biến động tài khoản qua Webhook thời gian thực.',
+                            isEn
+                                ? 'SePay gateway automatically detects real-time bank transactions via Webhook.'
+                                : 'Cổng SePay tự động phát hiện biến động tài khoản qua Webhook thời gian thực.',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11.5,
@@ -369,6 +380,8 @@ class _EscrowCheckoutScreenState extends State<EscrowCheckoutScreen> {
           ),
         ),
       ),
+    );
+      },
     );
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+
 import '../controllers/escrow_state_controller.dart';
 import '../core/network/api_client.dart';
 import 'wallet_provider.dart';
@@ -18,11 +19,7 @@ class StylingRequestProvider extends ChangeNotifier {
   /// 'APPROVED' = Approved & Released
   /// 'ACTIVE'   = Active • Ready to Review
   /// 'LOCKED'   = Locked
-  Map<int, String> _stageStatuses = {
-    1: 'ACTIVE',
-    2: 'LOCKED',
-    3: 'LOCKED',
-  };
+  Map<int, String> _stageStatuses = {1: 'ACTIVE', 2: 'LOCKED', 3: 'LOCKED'};
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -48,7 +45,9 @@ class StylingRequestProvider extends ChangeNotifier {
   void restoreActiveRequest(Map<String, dynamic> request) {
     _activeRequest = Map<String, dynamic>.from(request);
     final rawCode = _activeRequest!['code']?.toString() ?? '';
-    _activeRequest!['code'] = rawCode.startsWith('#') ? rawCode : (rawCode.isEmpty ? '' : '#$rawCode');
+    _activeRequest!['code'] = rawCode.startsWith('#')
+        ? rawCode
+        : (rawCode.isEmpty ? '' : '#$rawCode');
     _syncWalletWithActiveOrder(notify: false);
     notifyListeners();
   }
@@ -68,11 +67,7 @@ class StylingRequestProvider extends ChangeNotifier {
   void clearActiveRequest() {
     _activeRequest = null;
     _requests = [];
-    _stageStatuses = {
-      1: 'ACTIVE',
-      2: 'LOCKED',
-      3: 'LOCKED',
-    };
+    _stageStatuses = {1: 'ACTIVE', 2: 'LOCKED', 3: 'LOCKED'};
     WalletProvider.instance.clearActiveOrderState(notify: true);
     notifyListeners();
   }
@@ -89,14 +84,18 @@ class StylingRequestProvider extends ChangeNotifier {
         _requests = data.whereType<Map<String, dynamic>>().toList();
         _activeRequest = _requests.first;
         final rawCode = _activeRequest!['code']?.toString() ?? '';
-        _activeRequest!['code'] = rawCode.startsWith('#') ? rawCode : (rawCode.isEmpty ? '' : '#$rawCode');
+        _activeRequest!['code'] = rawCode.startsWith('#')
+            ? rawCode
+            : (rawCode.isEmpty ? '' : '#$rawCode');
         final detailResp = await ApiClient.instance.get(
           '/styling-requests/${_activeRequest!['id']}',
         );
         if (detailResp['data'] is Map<String, dynamic>) {
           _activeRequest = detailResp['data'] as Map<String, dynamic>;
           final codeStr = _activeRequest!['code']?.toString() ?? '';
-          _activeRequest!['code'] = codeStr.startsWith('#') ? codeStr : (codeStr.isEmpty ? '' : '#$codeStr');
+          _activeRequest!['code'] = codeStr.startsWith('#')
+              ? codeStr
+              : (codeStr.isEmpty ? '' : '#$codeStr');
         }
         _syncWalletWithActiveOrder(notify: false);
         EscrowStateController.instance.saveActiveOrder(_activeRequest!);
@@ -104,11 +103,7 @@ class StylingRequestProvider extends ChangeNotifier {
         // When server has no active requests, clear active order completely so no zombie orders show up
         _requests = [];
         _activeRequest = null;
-        _stageStatuses = {
-          1: 'ACTIVE',
-          2: 'LOCKED',
-          3: 'LOCKED',
-        };
+        _stageStatuses = {1: 'ACTIVE', 2: 'LOCKED', 3: 'LOCKED'};
         await EscrowStateController.instance.clearActiveOrder();
         WalletProvider.instance.clearActiveOrderState(notify: true);
       }
@@ -160,7 +155,9 @@ class StylingRequestProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       if (response['data'] is Map<String, dynamic>) {
-        final data = Map<String, dynamic>.from(response['data'] as Map<String, dynamic>);
+        final data = Map<String, dynamic>.from(
+          response['data'] as Map<String, dynamic>,
+        );
         // Strip any forbidden emojis if present in backend text
         if (data['enhancedBrief'] != null) {
           data['enhancedBrief'] = data['enhancedBrief']
@@ -173,7 +170,10 @@ class StylingRequestProvider extends ChangeNotifier {
         // Always ensure a visibly updated 4-color palette is returned from Gemini
         final apiColors = data['suggestedPalette'] ?? data['colorPalette'];
         if (apiColors is List && apiColors.length >= 4) {
-          data['suggestedPalette'] = apiColors.map((e) => e.toString()).take(4).toList();
+          data['suggestedPalette'] = apiColors
+              .map((e) => e.toString())
+              .take(4)
+              .toList();
         } else {
           data['suggestedPalette'] = nextPalette;
         }
@@ -251,14 +251,16 @@ class StylingRequestProvider extends ChangeNotifier {
           'title': title,
           'briefText': briefText,
           'totalBudget': totalBudget,
-          if (stylistId != null) 'stylistId': stylistId,
-          if (colorPalette != null) 'colorPalette': colorPalette,
-          if (occasion != null) 'occasion': occasion,
-          if (vibe != null) 'vibe': vibe,
+          'stylistId': ?stylistId,
+          'colorPalette': ?colorPalette,
+          'occasion': ?occasion,
+          'vibe': ?vibe,
         },
       );
       if (response['data'] is Map<String, dynamic>) {
-        created = Map<String, dynamic>.from(response['data'] as Map<String, dynamic>);
+        created = Map<String, dynamic>.from(
+          response['data'] as Map<String, dynamic>,
+        );
       }
     } catch (e) {
       _errorMessage = e.toString();
@@ -270,8 +272,10 @@ class StylingRequestProvider extends ChangeNotifier {
     final compactCode = cleanCode.replaceAll('#', '');
 
     _activeRequest = {
-      if (created != null) ...created,
-      'id': created?['id'] ?? 'local-req-${DateTime.now().millisecondsSinceEpoch}',
+      ...?created,
+      'id':
+          created?['id'] ??
+          'local-req-${DateTime.now().millisecondsSinceEpoch}',
       'code': cleanCode,
       'title': title,
       'briefText': briefText,
@@ -295,11 +299,7 @@ class StylingRequestProvider extends ChangeNotifier {
 
     // Reset stage progression for the newly created order:
     // Stage 01 (30% Draft) is Approved & Released, Stage 02 (30% Outfit) is Active, Stage 03 (40% Final) is Locked.
-    _stageStatuses = {
-      1: 'ACTIVE',
-      2: 'LOCKED',
-      3: 'LOCKED',
-    };
+    _stageStatuses = {1: 'ACTIVE', 2: 'LOCKED', 3: 'LOCKED'};
     _syncWalletWithActiveOrder(notify: true);
     EscrowStateController.instance.saveActiveOrder(_activeRequest!);
 
@@ -441,7 +441,10 @@ class StylingRequestProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> requestMilestoneRevision({int? stageNumber, String? clientFeedback}) async {
+  Future<bool> requestMilestoneRevision({
+    int? stageNumber,
+    String? clientFeedback,
+  }) async {
     return requestRevision(stageNumber ?? 2, clientFeedback ?? '');
   }
 
@@ -477,10 +480,7 @@ class StylingRequestProvider extends ChangeNotifier {
       } else if (requestId != null && !requestId.startsWith('local-')) {
         await ApiClient.instance.post(
           '/styling-requests/$requestId/reviews',
-          body: {
-            'rating': rating,
-            'comment': reasonOrComment,
-          },
+          body: {'rating': rating, 'comment': reasonOrComment},
         );
       }
       _isLoading = false;
@@ -523,10 +523,7 @@ class StylingRequestProvider extends ChangeNotifier {
         'status': 'IN_PROGRESS',
       };
     } else {
-      _activeRequest = {
-        ..._activeRequest!,
-        'totalBudget': cleanBudget,
-      };
+      _activeRequest = {..._activeRequest!, 'totalBudget': cleanBudget};
     }
     _syncWalletWithActiveOrder(notify: true);
     notifyListeners();
@@ -561,7 +558,8 @@ class StylingRequestProvider extends ChangeNotifier {
   }
 
   List<String> get activePaletteHex {
-    final raw = _activeRequest?['colorPalette'] ?? _activeRequest?['aiPaletteJson'];
+    final raw =
+        _activeRequest?['colorPalette'] ?? _activeRequest?['aiPaletteJson'];
     if (raw is List && raw.length >= 4) {
       return raw.map((e) => e.toString()).take(4).toList();
     }
@@ -592,7 +590,7 @@ class StylingRequestProvider extends ChangeNotifier {
           body: {
             'rating': rating,
             'comment': comment,
-            if (aiPoseScore != null) 'aiPoseScore': aiPoseScore,
+            'aiPoseScore': ?aiPoseScore,
           },
         );
       }
@@ -610,10 +608,7 @@ class StylingRequestProvider extends ChangeNotifier {
       if (reqId != null && !reqId.startsWith('local-')) {
         await ApiClient.instance.post(
           '/disputes',
-          body: {
-            'requestId': reqId,
-            'reason': reason,
-          },
+          body: {'requestId': reqId, 'reason': reason},
         );
       }
     } catch (_) {}
@@ -657,8 +652,8 @@ class StylingRequestProvider extends ChangeNotifier {
           '/milestones/$milestoneId/submit',
           body: {
             'deliverableImageUrl': deliverableImageUrl,
-            if (stylistNotes != null) 'stylistNotes': stylistNotes,
-            if (affiliateUrl != null) 'affiliateUrl': affiliateUrl,
+            'stylistNotes': ?stylistNotes,
+            'affiliateUrl': ?affiliateUrl,
           },
         );
       }

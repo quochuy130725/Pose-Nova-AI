@@ -1,6 +1,8 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../providers/styling_request_provider.dart';
 import '../providers/wallet_provider.dart';
 
@@ -13,7 +15,8 @@ class EscrowStateController extends ChangeNotifier {
 
   static const String _storageKeyOrder = 'posenova_active_escrow_order_v2';
   static const String _storageKeyStages = 'posenova_escrow_stages_v2';
-  static const String _storageKeyDeliverables = 'posenova_stage_deliverables_v2';
+  static const String _storageKeyDeliverables =
+      'posenova_stage_deliverables_v2';
 
   Map<String, dynamic>? _cachedOrder;
   Map<int, String> _cachedStageStatuses = {
@@ -32,7 +35,8 @@ class EscrowStateController extends ChangeNotifier {
 
   bool get hasActiveOrder =>
       StylingRequestProvider.instance.hasActiveOrder ||
-      (_cachedOrder != null && (_cachedOrder!['code']?.toString().isNotEmpty ?? false));
+      (_cachedOrder != null &&
+          (_cachedOrder!['code']?.toString().isNotEmpty ?? false));
 
   String get activeOrderCode {
     final raw = activeStylingRequest?['code']?.toString() ?? '';
@@ -54,7 +58,8 @@ class EscrowStateController extends ChangeNotifier {
       StylingRequestProvider.instance.stageStatus(stageOrder);
 
   bool isStageApproved(int stageOrder) => stageStatus(stageOrder) == 'APPROVED';
-  bool isStageInReview(int stageOrder) => stageStatus(stageOrder) == 'IN_REVIEW';
+  bool isStageInReview(int stageOrder) =>
+      stageStatus(stageOrder) == 'IN_REVIEW';
   bool isStageActive(int stageOrder) => stageStatus(stageOrder) == 'ACTIVE';
   bool isStageLocked(int stageOrder) => stageStatus(stageOrder) == 'LOCKED';
 
@@ -88,11 +93,7 @@ class EscrowStateController extends ChangeNotifier {
       await prefs.remove(_storageKeyStages);
       await prefs.remove(_storageKeyDeliverables);
       _cachedOrder = null;
-      _cachedStageStatuses = {
-        1: 'ACTIVE',
-        2: 'LOCKED',
-        3: 'LOCKED',
-      };
+      _cachedStageStatuses = {1: 'ACTIVE', 2: 'LOCKED', 3: 'LOCKED'};
       _stageDeliverables.clear();
     } catch (e) {
       debugPrint('Error initializing EscrowStateController: $e');
@@ -138,16 +139,17 @@ class EscrowStateController extends ChangeNotifier {
   }) async {
     _stageDeliverables[stageOrder] = {
       'imageUrl': imageUrl,
-      if (notes != null) 'notes': notes,
-      if (affiliateUrl != null) 'affiliateUrl': affiliateUrl,
+      'notes': ?notes,
+      'affiliateUrl': ?affiliateUrl,
       'submittedAt': DateTime.now().toIso8601String(),
     };
     await updateStageStatus(stageOrder, 'IN_REVIEW');
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final stringMap =
-          _stageDeliverables.map((k, v) => MapEntry(k.toString(), v));
+      final stringMap = _stageDeliverables.map(
+        (k, v) => MapEntry(k.toString(), v),
+      );
       await prefs.setString(_storageKeyDeliverables, jsonEncode(stringMap));
     } catch (e) {
       debugPrint('Error saving deliverables: $e');
@@ -164,8 +166,9 @@ class EscrowStateController extends ChangeNotifier {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final stringMap =
-          _cachedStageStatuses.map((k, v) => MapEntry(k.toString(), v));
+      final stringMap = _cachedStageStatuses.map(
+        (k, v) => MapEntry(k.toString(), v),
+      );
       await prefs.setString(_storageKeyStages, jsonEncode(stringMap));
     } catch (e) {
       debugPrint('Error saving stage statuses: $e');
@@ -183,11 +186,7 @@ class EscrowStateController extends ChangeNotifier {
   /// Clears the active order completely (e.g. on contract completion or dispute refund)
   Future<void> clearActiveOrder() async {
     _cachedOrder = null;
-    _cachedStageStatuses = {
-      1: 'ACTIVE',
-      2: 'LOCKED',
-      3: 'LOCKED',
-    };
+    _cachedStageStatuses = {1: 'ACTIVE', 2: 'LOCKED', 3: 'LOCKED'};
     _stageDeliverables.clear();
     StylingRequestProvider.instance.clearActiveRequest();
     WalletProvider.instance.clearActiveOrderState(notify: true);

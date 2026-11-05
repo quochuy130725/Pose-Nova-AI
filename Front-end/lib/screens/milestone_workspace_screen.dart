@@ -295,7 +295,8 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
 
   bool isStageActive(int stageOrder) {
     if (!StylingRequestProvider.instance.hasActiveOrder) return false;
-    if (isStageApproved(stageOrder) || isStageInReview(stageOrder)) return false;
+    if (isStageApproved(stageOrder) || isStageInReview(stageOrder))
+      return false;
     if (stageOrder == 1) return true;
     if (stageOrder == 2) return isStage1Approved;
     if (stageOrder == 3) return isStage2Approved;
@@ -316,16 +317,22 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
     }
     if (isStageInReview(stageOrder)) {
       if (widget.isStylistView) {
-        return t.isVi ? 'In Review • Chờ Client duyệt' : 'In Review • Client Reviewing';
+        return t.isVi
+            ? 'In Review • Chờ Client duyệt'
+            : 'In Review • Client Reviewing';
       } else {
-        return t.isVi ? 'In Review • Chờ bạn duyệt' : 'In Review • Awaiting Approval';
+        return t.isVi
+            ? 'In Review • Chờ bạn duyệt'
+            : 'In Review • Awaiting Approval';
       }
     }
     if (isStageActive(stageOrder)) {
       if (widget.isStylistView) {
         return t.isVi ? 'Đang mở • Sẵn sàng nộp' : 'Active • Ready to Submit';
       } else {
-        return t.isVi ? 'Đang mở • Chờ Stylist nộp bài' : 'Active • Waiting for Stylist';
+        return t.isVi
+            ? 'Đang mở • Chờ Stylist nộp bài'
+            : 'Active • Waiting for Stylist';
       }
     }
     return t.isVi
@@ -378,12 +385,15 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
   }
 
   void _handleRequestRevision() {
+    final t = AppLanguageController.instance.t;
     if (_revisionCount < _maxRevisions) {
       showDialog(
         context: context,
         builder: (ctx) {
           final textCtrl = TextEditingController(
-            text: 'Đổi quần cargo sang chất liệu vải kỹ thuật chống nước có viền phản quang.',
+            text: t.isVi
+                ? 'Đổi quần cargo sang chất liệu vải kỹ thuật chống nước có viền phản quang.'
+                : 'Switch cargo pants to water-resistant technical fabric with reflective piping.',
           );
           return AlertDialog(
             backgroundColor: AppColors.cardBackground,
@@ -400,7 +410,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Yêu cầu chỉnh sửa',
+                    t.requestRevisionBtn,
                     style: AppTheme.headingStyle.copyWith(fontSize: 16),
                   ),
                 ),
@@ -421,7 +431,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                     border: Border.all(color: AppColors.ink, width: 1.5),
                   ),
                   child: Text(
-                    'Lần sửa: ${_revisionCount + 1} / $_maxRevisions (Lần cuối miễn phí)',
+                    t.isVi
+                        ? 'Lần sửa: ${_revisionCount + 1} / $_maxRevisions (Lần cuối miễn phí)'
+                        : 'Revision: ${_revisionCount + 1} / $_maxRevisions (Last free quota)',
                     style: AppTheme.monoStyle.copyWith(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -435,7 +447,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                   maxLines: 3,
                   style: AppTheme.bodyStyle.copyWith(fontSize: 13),
                   decoration: InputDecoration(
-                    hintText: 'Nhập chi tiết yêu cầu Stylist chỉnh sửa...',
+                    hintText: t.isVi
+                        ? 'Nhập chi tiết yêu cầu Stylist chỉnh sửa...'
+                        : 'Enter revision details for Stylist...',
                     filled: true,
                     fillColor: AppColors.canvasGlow,
                     border: OutlineInputBorder(
@@ -460,14 +474,14 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text(
-                  'HỦY',
+                  t.cancelBtn,
                   style: AppTheme.headingStyle.copyWith(
                     color: AppColors.ink.withValues(alpha: 0.6),
                   ),
                 ),
               ),
               BrutalistButton(
-                text: 'GỬI FEEDBACK',
+                text: t.isVi ? 'GỬI FEEDBACK' : 'SEND FEEDBACK',
                 backgroundColor: AppColors.electricYellow,
                 textColor: AppColors.ink,
                 height: 42,
@@ -492,7 +506,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                     SnackBar(
                       backgroundColor: AppColors.obsidian,
                       content: Text(
-                        'Đã gửi yêu cầu lên Back-End! Đã dùng: $_revisionCount / $_maxRevisions Free Revisions.',
+                        t.isVi
+                            ? 'Đã gửi yêu cầu sửa! Đã dùng: $_revisionCount / $_maxRevisions lượt miễn phí.'
+                            : 'Revision requested! Used: $_revisionCount / $_maxRevisions free revisions.',
                         style: const TextStyle(
                           color: AppColors.electricYellow,
                           fontWeight: FontWeight.bold,
@@ -569,12 +585,16 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Giải ngân Chặng 1 thành công!',
+                        AppLanguageController.instance.isVietnamese
+                            ? 'Giải ngân Chặng 1 thành công!'
+                            : 'Stage 1 Released Successfully!',
                         style: AppTheme.headingStyle.copyWith(fontSize: 16),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '+${CurrencyFormatter.formatVnd(stage1Net)} đã vào Ví Stylist (Đã trừ 15% phí sàn)',
+                        AppLanguageController.instance.isVietnamese
+                            ? '+${CurrencyFormatter.formatVnd(stage1Net)} đã vào Ví Stylist (Đã trừ 15% phí sàn)'
+                            : '+${CurrencyFormatter.formatVnd(stage1Net)} credited to Stylist Wallet (15% fee deducted)',
                         style: AppTheme.monoStyle.copyWith(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
@@ -588,7 +608,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
             ),
             const SizedBox(height: 14),
             Text(
-              'Bản thảo Moodboard & Concept đã được nghiệm thu. Hệ thống đã mở khóa Chặng 02 (Phối đồ & Gắn thẻ sản phẩm) cho Stylist tiếp tục làm việc.',
+              AppLanguageController.instance.isVietnamese
+                  ? 'Bản thảo Moodboard & Concept đã được nghiệm thu. Hệ thống đã mở khóa Chặng 02 (Phối đồ & Gắn thẻ sản phẩm) cho Stylist tiếp tục làm việc.'
+                  : 'Moodboard & Concept approved. System has unlocked Stage 02 (Outfit Selection & Tags) for the Stylist.',
               style: AppTheme.bodyStyle.copyWith(fontSize: 13, height: 1.4),
             ),
             const SizedBox(height: 18),
@@ -596,7 +618,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
               children: [
                 Expanded(
                   child: BrutalistButton(
-                    text: 'Ở LẠI XEM',
+                    text: AppLanguageController.instance.isVietnamese ? 'Ở LẠI XEM' : 'STAY HERE',
                     backgroundColor: AppColors.cardBackground,
                     textColor: AppColors.ink,
                     height: 48,
@@ -606,7 +628,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: BrutalistButton(
-                    text: 'TIẾP TỤC CHẶNG 02 →',
+                    text: AppLanguageController.instance.isVietnamese ? 'TIẾP TỤC CHẶNG 02 →' : 'NEXT STAGE 02 →',
                     backgroundColor: AppColors.electricYellow,
                     textColor: AppColors.ink,
                     height: 48,
@@ -686,12 +708,16 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Giải ngân 30% Thành Công!',
+                        AppLanguageController.instance.isVietnamese
+                            ? 'Giải ngân 30% Thành Công!'
+                            : '30% Stage 2 Released!',
                         style: AppTheme.headingStyle.copyWith(fontSize: 16),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '+${CurrencyFormatter.formatVnd(stage2Net)} đã vào Ví Stylist (Đã trừ 15% phí sàn)',
+                        AppLanguageController.instance.isVietnamese
+                            ? '+${CurrencyFormatter.formatVnd(stage2Net)} đã vào Ví Stylist (Đã trừ 15% phí sàn)'
+                            : '+${CurrencyFormatter.formatVnd(stage2Net)} credited to Stylist Wallet (15% fee deducted)',
                         style: AppTheme.monoStyle.copyWith(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
@@ -705,7 +731,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
             ),
             const SizedBox(height: 14),
             Text(
-              'Giai đoạn 02: Outfit Selection & Tags đã được nghiệm thu. Giai đoạn 03: Final Lookbook & Pose đã được mở khóa!',
+              AppLanguageController.instance.isVietnamese
+                  ? 'Giai đoạn 02: Outfit Selection & Tags đã được nghiệm thu. Giai đoạn 03: Final Lookbook & Pose đã được mở khóa!'
+                  : 'Stage 02: Outfit Selection & Tags approved. Stage 03: Final Lookbook & Pose is now unlocked!',
               style: AppTheme.bodyStyle.copyWith(fontSize: 13, height: 1.4),
             ),
             const SizedBox(height: 18),
@@ -713,7 +741,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
               children: [
                 Expanded(
                   child: BrutalistButton(
-                    text: 'TIẾP TỤC THEO DÕI',
+                    text: AppLanguageController.instance.isVietnamese ? 'TIẾP TỤC THEO DÕI' : 'CONTINUE TRACKING',
                     backgroundColor: AppColors.cardBackground,
                     textColor: AppColors.ink,
                     height: 48,
@@ -723,7 +751,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: BrutalistButton(
-                    text: 'XEM VÍ STYLIST →',
+                    text: AppLanguageController.instance.isVietnamese ? 'XEM VÍ STYLIST →' : 'VIEW STYLIST WALLET →',
                     backgroundColor: AppColors.electricYellow,
                     textColor: AppColors.ink,
                     height: 48,
@@ -806,12 +834,16 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Giải ngân 40% Hoàn Tất Hợp Đồng!',
+                        AppLanguageController.instance.isVietnamese
+                            ? 'Giải ngân 40% Hoàn Tất Hợp Đồng!'
+                            : '40% Released • Contract Completed!',
                         style: AppTheme.headingStyle.copyWith(fontSize: 16),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '+${CurrencyFormatter.formatVnd(stage3Net)} đã vào Ví Stylist (100% Escrow giải ngân)',
+                        AppLanguageController.instance.isVietnamese
+                            ? '+${CurrencyFormatter.formatVnd(stage3Net)} đã vào Ví Stylist (100% Escrow giải ngân)'
+                            : '+${CurrencyFormatter.formatVnd(stage3Net)} credited to Stylist Wallet (100% Escrow settled)',
                         style: AppTheme.monoStyle.copyWith(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
@@ -825,7 +857,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
             ),
             const SizedBox(height: 14),
             Text(
-              'Toàn bộ 3 chặng của hợp đồng đã được nghiệm thu thành công. Bạn có thể để lại đánh giá 5 sao cho Stylist ngay bây giờ!',
+              AppLanguageController.instance.isVietnamese
+                  ? 'Toàn bộ 3 chặng của hợp đồng đã được nghiệm thu thành công. Bạn có thể để lại đánh giá 5 sao cho Stylist ngay bây giờ!'
+                  : 'All 3 milestones have been approved. You can now leave a 5-star review for your Stylist!',
               style: AppTheme.bodyStyle.copyWith(fontSize: 13, height: 1.4),
             ),
             const SizedBox(height: 18),
@@ -833,7 +867,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
               children: [
                 Expanded(
                   child: BrutalistButton(
-                    text: 'ĐỂ SAU',
+                    text: AppLanguageController.instance.isVietnamese ? 'ĐỂ SAU' : 'LATER',
                     backgroundColor: AppColors.cardBackground,
                     textColor: AppColors.ink,
                     height: 48,
@@ -843,7 +877,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: BrutalistButton(
-                    text: 'ĐÁNH GIÁ 5 SAO →',
+                    text: AppLanguageController.instance.isVietnamese ? 'ĐÁNH GIÁ 5 SAO →' : 'RATE 5 STARS →',
                     backgroundColor: AppColors.electricYellow,
                     textColor: AppColors.ink,
                     height: 48,
@@ -897,7 +931,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Điều Chỉnh Ngân Sách Hợp Đồng Ký Quỹ',
+                AppLanguageController.instance.isVietnamese
+                    ? 'Điều Chỉnh Ngân Sách Hợp Đồng Ký Quỹ'
+                    : 'Adjust Escrow Contract Budget',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
@@ -906,7 +942,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Chọn mức ngân sách để test trực tiếp luồng Escrow VietQR / SePay:',
+                AppLanguageController.instance.isVietnamese
+                    ? 'Chọn mức ngân sách để test trực tiếp luồng Escrow VietQR / SePay:'
+                    : 'Select a budget tier to test the VietQR / SePay Escrow workflow:',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   color: const Color(0xFF71717A),
@@ -962,7 +1000,8 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hasAnyActiveOrder = StylingRequestProvider.instance.hasActiveOrder ||
+    final hasAnyActiveOrder =
+        StylingRequestProvider.instance.hasActiveOrder ||
         EscrowStateController.instance.hasActiveOrder;
     if (_isLoading && !hasAnyActiveOrder) {
       return const Scaffold(
@@ -1588,8 +1627,10 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
     final String stageName = stageIndex == 0
         ? 'Moodboard & Concept'
         : (stageIndex == 1
-            ? (t.isVi ? 'Phối Đồ & Thẻ Sản Phẩm' : 'Outfit Selection & Tags')
-            : (t.isVi ? 'Lookbook Hoàn Chỉnh & Dáng AI' : 'Final Lookbook & Pose'));
+              ? (t.isVi ? 'Phối Đồ & Thẻ Sản Phẩm' : 'Outfit Selection & Tags')
+              : (t.isVi
+                    ? 'Lookbook Hoàn Chỉnh & Dáng AI'
+                    : 'Final Lookbook & Pose'));
 
     return Container(
       width: double.infinity,
@@ -1681,7 +1722,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  t.isVi ? 'ĐANG THỰC HIỆN • CHỜ BÀI NỘP' : 'IN PROGRESS • AWAITING SUBMISSION',
+                  t.isVi
+                      ? 'ĐANG THỰC HIỆN • CHỜ BÀI NỘP'
+                      : 'IN PROGRESS • AWAITING SUBMISSION',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
@@ -1703,19 +1746,24 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
 
     final String? deliverableUrl =
         EscrowStateController.instance.stageDeliverableImageUrl(stageOrder) ??
-            (stageIndex == _selectedStageIndex ? _uploadedImageUrl : null);
+        (stageIndex == _selectedStageIndex ? _uploadedImageUrl : null);
 
     final String? notes =
         EscrowStateController.instance.stageDeliverableNotes(stageOrder) ??
-            (stageIndex == _selectedStageIndex && _curationNotesController.text.trim().isNotEmpty
-                ? _curationNotesController.text.trim()
-                : null);
+        (stageIndex == _selectedStageIndex &&
+                _curationNotesController.text.trim().isNotEmpty
+            ? _curationNotesController.text.trim()
+            : null);
 
     final String stageTitle = stageIndex == 0
         ? 'Moodboard & Concept'
         : (stageIndex == 1
-            ? (t.isVi ? 'Stage 02 • Phối Đồ & Thẻ Sản Phẩm' : 'Stage 02 • Outfit Selection & Tags')
-            : (t.isVi ? 'Stage 03 • Lookbook Hoàn Chỉnh & Dáng AI' : 'Stage 03 • Final Lookbook & Pose'));
+              ? (t.isVi
+                    ? 'Stage 02 • Phối Đồ & Thẻ Sản Phẩm'
+                    : 'Stage 02 • Outfit Selection & Tags')
+              : (t.isVi
+                    ? 'Stage 03 • Lookbook Hoàn Chỉnh & Dáng AI'
+                    : 'Stage 03 • Final Lookbook & Pose'));
 
     final String badgeText = stageIndex == 0
         ? 'Moodboard'
@@ -1759,12 +1807,19 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
               ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
-                  color: approved ? const Color(0xFFECFDF5) : const Color(0xFFFFFBEB),
+                  color: approved
+                      ? const Color(0xFFECFDF5)
+                      : const Color(0xFFFFFBEB),
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: approved ? const Color(0xFFA7F3D0) : const Color(0xFFFDE68A),
+                    color: approved
+                        ? const Color(0xFFA7F3D0)
+                        : const Color(0xFFFDE68A),
                     width: 1.0,
                   ),
                 ),
@@ -1773,7 +1828,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
-                    color: approved ? const Color(0xFF059669) : const Color(0xFFD97706),
+                    color: approved
+                        ? const Color(0xFF059669)
+                        : const Color(0xFFD97706),
                   ),
                 ),
               ),
@@ -1806,7 +1863,11 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                             height: 310,
                             color: const Color(0xFFF4F4F5),
                             alignment: Alignment.center,
-                            child: const Icon(Icons.image, size: 48, color: Colors.grey),
+                            child: const Icon(
+                              Icons.image,
+                              size: 48,
+                              color: Colors.grey,
+                            ),
                           ),
                         )
                       : Image.file(
@@ -1818,7 +1879,11 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                             height: 310,
                             color: const Color(0xFFF4F4F5),
                             alignment: Alignment.center,
-                            child: const Icon(Icons.image, size: 48, color: Colors.grey),
+                            child: const Icon(
+                              Icons.image,
+                              size: 48,
+                              color: Colors.grey,
+                            ),
                           ),
                         )
                 else
@@ -1826,13 +1891,20 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                     height: 310,
                     color: const Color(0xFFF4F4F5),
                     alignment: Alignment.center,
-                    child: const Icon(Icons.image, size: 48, color: Colors.grey),
+                    child: const Icon(
+                      Icons.image,
+                      size: 48,
+                      color: Colors.grey,
+                    ),
                   ),
                 Positioned(
                   top: 12,
                   left: 12,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.65),
                       borderRadius: BorderRadius.circular(999),
@@ -1840,7 +1912,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                     child: Text(
                       stageIndex == 0
                           ? "MOODBOARD '26"
-                          : (stageIndex == 1 ? "OUTFIT CURATION" : "FINAL LOOKBOOK"),
+                          : (stageIndex == 1
+                                ? "OUTFIT CURATION"
+                                : "FINAL LOOKBOOK"),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
@@ -1854,15 +1928,24 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                   top: 12,
                   right: 12,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
-                      color: approved ? const Color(0xFF059669) : const Color(0xFFF59E0B),
+                      color: approved
+                          ? const Color(0xFF059669)
+                          : const Color(0xFFF59E0B),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
                       approved
-                          ? (t.isVi ? 'Đã duyệt • $percent' : 'Approved • $percent')
-                          : (t.isVi ? 'Chờ duyệt • $percent' : 'Pending Review • $percent'),
+                          ? (t.isVi
+                                ? 'Đã duyệt • $percent'
+                                : 'Approved • $percent')
+                          : (t.isVi
+                                ? 'Chờ duyệt • $percent'
+                                : 'Pending Review • $percent'),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
@@ -1912,8 +1995,8 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                   ),
                   Text(
                     t.isVi
-                        ? '${_revisionCount} / ${_maxRevisions} (Còn ${_maxRevisions - _revisionCount} lần)'
-                        : '${_revisionCount} / ${_maxRevisions} Used (${_maxRevisions - _revisionCount} left)',
+                        ? '$_revisionCount / $_maxRevisions (Còn ${_maxRevisions - _revisionCount} lần)'
+                        : '$_revisionCount / $_maxRevisions Used (${_maxRevisions - _revisionCount} left)',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w800,
@@ -2106,7 +2189,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Upload Lookbook Photo & Pose',
+                t.uploadLookbookHeader,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 17,
@@ -2117,7 +2200,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Support JPG, PNG • Auto-extracts 33 AI Pose Landmarks',
+                t.uploadLookbookSubtitle,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 12.5,
@@ -2212,7 +2295,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Google ML Kit analyzing photo...',
+            t.isVi ? 'Google ML Kit đang phân tích ảnh...' : 'Google ML Kit analyzing photo...',
             textAlign: TextAlign.center,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 16,
@@ -2223,7 +2306,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Detecting 33 skeletal landmarks • Inferring 3D joint coordinates',
+            t.isVi
+                ? 'Đang nhận diện 33 khớp xương • Nội suy tọa độ 3D'
+                : 'Detecting 33 skeletal landmarks • Inferring 3D joint coordinates',
             textAlign: TextAlign.center,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
@@ -2307,7 +2392,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                   children: [
                     Flexible(
                       child: Text(
-                        'Stage 02 • Stylist Deliverable',
+                        t.isVi
+                            ? 'Chặng 0${_selectedStageIndex + 1} • Bài Nộp Stylist'
+                            : 'Stage 0${_selectedStageIndex + 1} • Stylist Deliverable',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.plusJakartaSans(
@@ -2440,7 +2527,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        '33 AI LANDMARKS READY',
+                        t.landmarksReadyBadge,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w800,
@@ -2498,7 +2585,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              'Skeleton',
+                              t.toggleSkeletonBtn,
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w800,
@@ -2635,7 +2722,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'AFFILIATE PRODUCT TAGGING',
+                        t.affiliateProductLink.toUpperCase(),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w800,
@@ -2662,7 +2749,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                         ),
                       ),
                       child: Text(
-                        _hasProductTag ? '✓ PINNED (1)' : 'WAITING LINK',
+                        _hasProductTag
+                            ? (t.isVi ? '✓ ĐÃ GHIM (1)' : '✓ PINNED (1)')
+                            : (t.isVi ? 'CHỜ GẮN LINK' : 'WAITING LINK'),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
@@ -2705,11 +2794,13 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                             fontWeight: FontWeight.w600,
                             color: const Color(0xFF18181B),
                           ),
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             border: InputBorder.none,
                             isDense: true,
                             contentPadding: EdgeInsets.zero,
-                            hintText: 'Nhập link Shopee affiliate...',
+                            hintText: t.isVi
+                                ? 'Nhập link Shopee affiliate...'
+                                : 'Enter Shopee affiliate link...',
                           ),
                         ),
                       ),
@@ -2785,8 +2876,8 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                         const SizedBox(width: 6),
                         Text(
                           _hasProductTag
-                              ? 'ĐÃ GHIM THẺ MUA HÀNG ✓'
-                              : '+ Gắn Link Mua Hàng',
+                              ? (t.isVi ? 'ĐÃ GHIM THẺ MUA HÀNG ✓' : 'PRODUCT TAG PINNED ✓')
+                              : t.attachPurchaseLink,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
@@ -2803,7 +2894,7 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                 const SizedBox(height: 12),
 
                 Text(
-                  'GỢI Ý PHỐI ĐỒ (CURATOR NOTES)',
+                  t.stylistNotes.toUpperCase(),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w800,
@@ -2881,12 +2972,14 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
               );
 
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  backgroundColor: Color(0xFF18181B),
-                  duration: Duration(seconds: 3),
+                SnackBar(
+                  backgroundColor: const Color(0xFF18181B),
+                  duration: const Duration(seconds: 3),
                   content: Text(
-                    'Đã lưu vào Feed & gửi thông báo nghiệm thu sang Khách hàng Alex Đỗ!',
-                    style: TextStyle(
+                    t.isVi
+                        ? 'Đã lưu vào Feed & gửi thông báo nghiệm thu sang Khách hàng Alex Đỗ!'
+                        : 'Saved to Feed & sent inspection notice to Client Alex Đỗ!',
+                    style: const TextStyle(
                       color: Color(0xFF34D399),
                       fontWeight: FontWeight.bold,
                     ),
@@ -2963,7 +3056,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'ĐÃ LƯU VÀO FEED & GỬI DUYỆT!',
+                          t.isVi
+                              ? 'ĐÃ LƯU VÀO FEED & GỬI DUYỆT!'
+                              : 'SAVED TO FEED & SUBMITTED!',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w900,
@@ -2975,7 +3070,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Đã lưu vào Feed & gửi thông báo nghiệm thu sang Khách hàng Alex Đỗ!',
+                    t.isVi
+                        ? 'Đã lưu vào Feed & gửi thông báo nghiệm thu sang Khách hàng Alex Đỗ!'
+                        : 'Saved to Feed & sent inspection notification to Client Alex Đỗ!',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 11.5,
                       color: const Color(0xFF047857),
@@ -3015,7 +3112,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'Chuyển sang Client View để nghiệm thu ↗',
+                            t.isVi
+                                ? 'Chuyển sang Client View để nghiệm thu ↗'
+                                : 'Switch to Client View to approve ↗',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
@@ -3070,13 +3169,20 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFF0FDF4),
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: const Color(0xFFBBF7D0), width: 1.2),
+                  border: Border.all(
+                    color: const Color(0xFFBBF7D0),
+                    width: 1.2,
+                  ),
                 ),
                 alignment: Alignment.center,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 18),
+                    const Icon(
+                      Icons.check_circle,
+                      color: Color(0xFF16A34A),
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       t.isVi
@@ -3094,7 +3200,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
               if (_selectedStageIndex < 2) ...[
                 const SizedBox(height: 10),
                 GestureDetector(
-                  onTap: () => setState(() => _selectedStageIndex = _selectedStageIndex + 1),
+                  onTap: () => setState(
+                    () => _selectedStageIndex = _selectedStageIndex + 1,
+                  ),
                   child: Container(
                     height: 44,
                     width: double.infinity,
@@ -3105,7 +3213,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      'CHUYỂN SANG CHẶNG 0${_selectedStageIndex + 2} →',
+                      t.isVi
+                          ? 'CHUYỂN SANG CHẶNG 0${_selectedStageIndex + 2} →'
+                          : 'PROCEED TO STAGE 0${_selectedStageIndex + 2} →',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
@@ -3135,11 +3245,11 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
               GestureDetector(
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      backgroundColor: Color(0xFF18181B),
+                    SnackBar(
+                      backgroundColor: const Color(0xFF18181B),
                       content: Text(
-                        'Đã lưu bản nháp thành công!',
-                        style: TextStyle(
+                        t.isVi ? 'Đã lưu bản nháp thành công!' : 'Draft saved successfully!',
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
@@ -3153,16 +3263,23 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: const Color(0xFFE4E4E7), width: 1.0),
+                    border: Border.all(
+                      color: const Color(0xFFE4E4E7),
+                      width: 1.0,
+                    ),
                   ),
                   alignment: Alignment.center,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.save_outlined, size: 16, color: Color(0xFF71717A)),
+                      const Icon(
+                        Icons.save_outlined,
+                        size: 16,
+                        color: Color(0xFF71717A),
+                      ),
                       const SizedBox(width: 6),
                       Text(
-                        'Lưu Bản Nháp',
+                        t.isVi ? 'Lưu Bản Nháp' : 'Save Draft',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700,
@@ -3183,7 +3300,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  t.isVi ? 'ĐANG KHÓA • HOÀN TẤT CHẶNG TRƯỚC' : 'LOCKED • COMPLETE PREVIOUS STAGE',
+                  t.isVi
+                      ? 'ĐANG KHÓA • HOÀN TẤT CHẶNG TRƯỚC'
+                      : 'LOCKED • COMPLETE PREVIOUS STAGE',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
@@ -3227,10 +3346,16 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 18),
+                  const Icon(
+                    Icons.check_circle,
+                    color: Color(0xFF16A34A),
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Text(
-                    'STAGE 0$currentStageOrder ĐÃ GIẢI NGÂN HOÀN TẤT',
+                    t.isVi
+                        ? 'CHẶNG 0$currentStageOrder ĐÃ GIẢI NGÂN HOÀN TẤT'
+                        : 'STAGE 0$currentStageOrder APPROVED & RELEASED',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
@@ -3244,7 +3369,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
             if (_selectedStageIndex < 2) ...[
               const SizedBox(height: 10),
               GestureDetector(
-                onTap: () => setState(() => _selectedStageIndex = _selectedStageIndex + 1),
+                onTap: () => setState(
+                  () => _selectedStageIndex = _selectedStageIndex + 1,
+                ),
                 child: Container(
                   height: 46,
                   width: double.infinity,
@@ -3255,7 +3382,9 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                   ),
                   alignment: Alignment.center,
                   child: Text(
-                    'CHUYỂN SANG CHẶNG 0${_selectedStageIndex + 2} →',
+                    t.isVi
+                        ? 'CHUYỂN SANG CHẶNG 0${_selectedStageIndex + 2} →'
+                        : 'PROCEED TO STAGE 0${_selectedStageIndex + 2} →',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
@@ -3267,13 +3396,16 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
             ] else ...[
               const SizedBox(height: 10),
               FashionDockButton(
-                text: 'STAGE 03 HOÀN TẤT • ĐÁNH GIÁ 5 SAO →',
+                text: t.isVi
+                    ? 'CHẶNG 03 HOÀN TẤT • ĐÁNH GIÁ 5 SAO →'
+                    : 'STAGE 03 COMPLETED • RATE 5 STARS →',
                 icon: Icons.star_rounded,
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const DisputeReviewScreen(isDisputeMode: false),
+                      builder: (_) =>
+                          const DisputeReviewScreen(isDisputeMode: false),
                     ),
                   );
                 },
@@ -3305,16 +3437,23 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: const Color(0xFFE4E4E7), width: 1.0),
+                    border: Border.all(
+                      color: const Color(0xFFE4E4E7),
+                      width: 1.0,
+                    ),
                   ),
                   alignment: Alignment.center,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.edit_note, size: 16, color: Color(0xFF18181B)),
+                      const Icon(
+                        Icons.edit_note,
+                        size: 16,
+                        color: Color(0xFF18181B),
+                      ),
                       const SizedBox(width: 6),
                       Text(
-                        '${t.requestRevisionBtn} (${_revisionCount}/${_maxRevisions})',
+                        '${t.requestRevisionBtn} ($_revisionCount/$_maxRevisions)',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700,
@@ -3331,7 +3470,8 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const DisputeReviewScreen(isDisputeMode: true),
+                      builder: (_) =>
+                          const DisputeReviewScreen(isDisputeMode: true),
                     ),
                   );
                 },
@@ -3376,11 +3516,16 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
                   const SizedBox(
                     width: 14,
                     height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD97706)),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFFD97706),
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    t.isVi ? 'CHỜ STYLIST NỘP BÀI ĐỂ NGHIỆM THU' : 'WAITING FOR STYLIST SUBMISSION',
+                    t.isVi
+                        ? 'CHỜ STYLIST NỘP BÀI ĐỂ NGHIỆM THU'
+                        : 'WAITING FOR STYLIST SUBMISSION',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w800,
@@ -3404,7 +3549,11 @@ class _MilestoneWorkspaceScreenState extends State<MilestoneWorkspaceScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.lock_outline, size: 16, color: Color(0xFF71717A)),
+                  const Icon(
+                    Icons.lock_outline,
+                    size: 16,
+                    color: Color(0xFF71717A),
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     t.isVi ? 'CHẶNG ĐANG KHÓA' : 'STAGE LOCKED',

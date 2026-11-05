@@ -153,11 +153,11 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                 color: AppColors.ink,
               ),
             ),
-            actions: const [
+            actions: [
               Padding(
-                padding: EdgeInsets.only(right: 14.0),
+                padding: const EdgeInsets.only(right: 14.0),
                 child: BrutalistBadge(
-                  label: 'CLIENT BRIEF',
+                  label: t.isVi ? 'YÊU CẦU KHÁCH' : 'CLIENT BRIEF',
                   backgroundColor: AppColors.electricYellow,
                   isMonospace: true,
                 ),
@@ -186,7 +186,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                               border: Border.all(color: Colors.transparent, width: 1.0),
                             ),
                             child: Text(
-                              'AW26 • Specification',
+                              t.isVi ? 'AW26 • Đặc tả yêu cầu' : 'AW26 • Specification',
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 10,
                                 color: AppColors.warmAmber,
@@ -197,7 +197,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Styling Brief',
+                            t.stylingBriefTitle,
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 28,
                               fontWeight: FontWeight.w900,
@@ -207,8 +207,8 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                           ),
                         ],
                       ),
-                      const BrutalistBadge(
-                        label: 'AI Matching',
+                      BrutalistBadge(
+                        label: t.isVi ? 'Ghép Đôi AI' : 'AI Matching',
                         backgroundColor: AppColors.warmAmber,
                         isMonospace: false,
                       ),
@@ -323,17 +323,19 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                                   color: AppColors.ink,
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Mã đơn: $code • Ký quỹ 100% trung gian',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textMuted,
+                                const SizedBox(height: 2),
+                                Text(
+                                  AppLanguageController.instance.isVietnamese
+                                      ? 'Mã đơn: $code • Ký quỹ 100% trung gian'
+                                      : 'Order: $code • 100% Escrow Protected',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textMuted,
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
@@ -402,20 +404,41 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                       ),
                       child: Column(
                         children: [
-                          _buildInfoRow('Ngân hàng:', 'MBBank (Quân Đội)'),
+                          _buildInfoRow(
+                            AppLanguageController.instance.isVietnamese ? 'Ngân hàng:' : 'Bank:',
+                            AppLanguageController.instance.isVietnamese ? 'MBBank (Quân Đội)' : 'MBBank',
+                          ),
                           const SizedBox(height: 4),
-                          _buildInfoRow('Số tài khoản:', '0829100286'),
+                          _buildInfoRow(
+                            AppLanguageController.instance.isVietnamese ? 'Số tài khoản:' : 'Account No:',
+                            '0829100286',
+                          ),
                           const SizedBox(height: 4),
-                          _buildInfoRow('Chủ tài khoản:', 'PHAM QUANG HUY'),
+                          _buildInfoRow(
+                            AppLanguageController.instance.isVietnamese ? 'Chủ tài khoản:' : 'Account Holder:',
+                            'PHAM QUANG HUY',
+                          ),
                           const SizedBox(height: 4),
-                          _buildInfoRow('Nội dung:', 'POSENOVA ${code.replaceAll('#', '')}'),
+                          _buildInfoRow(
+                            AppLanguageController.instance.isVietnamese ? 'Nội dung:' : 'Transfer Note:',
+                            'POSENOVA ${code.replaceAll('#', '')}',
+                          ),
                           const Divider(height: 16),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _buildMiniStageChip('30% Draft', CurrencyFormatter.formatVnd(stage1)),
-                              _buildMiniStageChip('30% Outfit', CurrencyFormatter.formatVnd(stage2)),
-                              _buildMiniStageChip('40% Final', CurrencyFormatter.formatVnd(stage3)),
+                              _buildMiniStageChip(
+                                AppLanguageController.instance.isVietnamese ? '30% Bản thảo' : '30% Draft',
+                                CurrencyFormatter.formatVnd(stage1),
+                              ),
+                              _buildMiniStageChip(
+                                AppLanguageController.instance.isVietnamese ? '30% Phối đồ' : '30% Outfit',
+                                CurrencyFormatter.formatVnd(stage2),
+                              ),
+                              _buildMiniStageChip(
+                                AppLanguageController.instance.isVietnamese ? '40% Hoàn thiện' : '40% Final',
+                                CurrencyFormatter.formatVnd(stage3),
+                              ),
                             ],
                           ),
                         ],
@@ -455,7 +478,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                                 child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.2),
                               )
                             : Text(
-                                'Xác nhận đã đặt cọc (Kích hoạt Escrow) →',
+                                AppLanguageController.instance.t.confirmEscrowDepositBtn,
                                 style: GoogleFonts.plusJakartaSans(
                                   color: Colors.white,
                                   fontSize: 13.5,
@@ -524,7 +547,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Concept & Occasion',
+                AppLanguageController.instance.t.conceptAndOccasion,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
@@ -541,7 +564,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                     border: Border.all(color: AppColors.petrol.withValues(alpha: 0.15), width: 1.0),
                   ),
                   child: Text(
-                    'AI Optimized',
+                    AppLanguageController.instance.isVietnamese ? 'Đã tối ưu AI' : 'AI Optimized',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 9.5,
                       fontWeight: FontWeight.w800,
@@ -635,7 +658,13 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        _isEnhanced ? 'GEMINI 1.5 PALETTE' : 'COLOR PALETTE',
+                        _isEnhanced
+                            ? (AppLanguageController.instance.isVietnamese
+                                ? 'BẢNG MÀU GEMINI 1.5'
+                                : 'GEMINI 1.5 PALETTE')
+                            : (AppLanguageController.instance.isVietnamese
+                                ? 'BẢNG MÀU AI'
+                                : 'COLOR PALETTE'),
                         style: GoogleFonts.jetBrainsMono(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
@@ -644,7 +673,9 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                         ),
                       ),
                       Text(
-                        '4 HEX HARMONY',
+                        AppLanguageController.instance.isVietnamese
+                            ? 'PHỐI 4 MÀU'
+                            : '4 HEX HARMONY',
                         style: GoogleFonts.jetBrainsMono(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w700,
@@ -722,7 +753,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                   Row(
                     children: [
                       Text(
-                        'Gemini Co-pilot Enhance',
+                        AppLanguageController.instance.t.geminiEnhanceBtn,
                         style: GoogleFonts.plusJakartaSans(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
@@ -782,6 +813,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
   }
 
   void _showCustomBudgetDialog() {
+    final t = AppLanguageController.instance.t;
     final ctrl = TextEditingController(text: _selectedBudgetVnd.toString());
     showDialog(
       context: context,
@@ -789,21 +821,21 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: Text(
-          'Nhập Ngân Sách Tùy Chỉnh',
+          t.customBudgetDialogTitle,
           style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800),
         ),
         content: TextField(
           controller: ctrl,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            hintText: 'Nhập số tiền (VND, tối thiểu 2.000₫)',
+          decoration: InputDecoration(
+            hintText: t.customBudgetHint,
             suffixText: '₫',
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('HỦY'),
+            child: Text(t.cancelBtn),
           ),
           ElevatedButton(
             onPressed: () {
@@ -813,7 +845,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                 Navigator.pop(ctx);
               }
             },
-            child: const Text('ÁP DỤNG'),
+            child: Text(t.applyBtn),
           ),
         ],
       ),
@@ -843,7 +875,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Total Escrow Budget',
+                AppLanguageController.instance.t.totalEscrowBudget,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -878,7 +910,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                         boxShadow: AppColors.chipShadow,
                       ),
                       child: Text(
-                        '100% Secured',
+                        AppLanguageController.instance.isVietnamese ? 'Bảo vệ 100%' : '100% Secured',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w800,
@@ -994,7 +1026,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    '30% Draft\n${CurrencyFormatter.formatVnd(stage1Vnd)}',
+                    '${AppLanguageController.instance.isVietnamese ? '30% Bản thảo' : '30% Draft'}\n${CurrencyFormatter.formatVnd(stage1Vnd)}',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 9.5,
@@ -1014,7 +1046,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    '30% Outfit\n${CurrencyFormatter.formatVnd(stage2Vnd)}',
+                    '${AppLanguageController.instance.isVietnamese ? '30% Phối đồ' : '30% Outfit'}\n${CurrencyFormatter.formatVnd(stage2Vnd)}',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 9.5,
@@ -1034,7 +1066,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    '40% Final\n${CurrencyFormatter.formatVnd(stage3Vnd)}',
+                    '${AppLanguageController.instance.isVietnamese ? '40% Hoàn thiện' : '40% Final'}\n${CurrencyFormatter.formatVnd(stage3Vnd)}',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 9.5,
@@ -1131,7 +1163,7 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Recommended Stylist',
+                t.recommendedStylist,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
@@ -1139,8 +1171,8 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                   letterSpacing: -0.2,
                 ),
               ),
-              const BrutalistBadge(
-                label: '98% Match',
+              BrutalistBadge(
+                label: t.isVi ? 'Độ hợp 98%' : '98% Match',
                 backgroundColor: AppColors.warmAmber,
                 isMonospace: false,
               ),
@@ -1220,7 +1252,9 @@ class _CreateStylingRequestScreenState extends State<CreateStylingRequestScreen>
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${AuthProvider.instance.stylistRatingAvg.toStringAsFixed(2)} ★ (${AuthProvider.instance.stylistTotalReviews} Reviews) • Top Atelier Stylist',
+                      t.isVi
+                          ? '${AuthProvider.instance.stylistRatingAvg.toStringAsFixed(2)} ★ (${AuthProvider.instance.stylistTotalReviews} đánh giá) • Stylist hàng đầu'
+                          : '${AuthProvider.instance.stylistRatingAvg.toStringAsFixed(2)} ★ (${AuthProvider.instance.stylistTotalReviews} Reviews) • Top Atelier Stylist',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(

@@ -360,7 +360,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Curated Outfits',
+                          AppLanguageController.instance.t.discoveryCuratedOutfits,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 18,
                             fontWeight: FontWeight.w900,
@@ -369,7 +369,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
                           ),
                         ),
                         Text(
-                          '${_filteredLookbookItems.length} Looks Ready',
+                          '${_filteredLookbookItems.length} ${AppLanguageController.instance.t.discoveryLooksReady}',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -393,6 +393,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
 
   /// 1. Top Header: User greeting + notification & bag icons
   Widget _buildTopGreetingHeader() {
+    final isVi = AppLanguageController.instance.isVietnamese;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -402,7 +403,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
             Row(
               children: [
                 Text(
-                  'Hey, Alex',
+                  isVi ? 'Chào, Alex' : 'Hey, Alex',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
@@ -414,7 +415,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
             ),
             const SizedBox(height: 2),
             Text(
-              'Virtual Try-On & AI Pose Atelier',
+              isVi ? 'Thử đồ ảo & Xưởng Tạo Dáng AI' : 'Virtual Try-On & AI Pose Atelier',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
@@ -454,13 +455,14 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
 
   /// 2. Wavespace's Highlighted Editorial Typography
   Widget _buildEditorialHeadline() {
+    final isVi = AppLanguageController.instance.isVietnamese;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Wrap(
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Text(
-            'Explore & Match Your Next ',
+            isVi ? 'Khám Phá & Khớp Dáng ' : 'Explore & Match Your Next ',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 27,
               fontWeight: FontWeight.w900,
@@ -486,7 +488,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
                 ],
               ),
               child: Text(
-                'Iconic',
+                isVi ? 'Chuẩn Mẫu' : 'Iconic',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 26,
                   fontWeight: FontWeight.w900,
@@ -497,7 +499,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
             ),
           ),
           Text(
-            ' Pose.',
+            isVi ? ' Của Bạn.' : ' Pose.',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 27,
               fontWeight: FontWeight.w900,
@@ -564,7 +566,9 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
                         boxShadow: AppColors.chipShadow,
                       ),
                       child: Text(
-                        '50% FASTER FIT',
+                        AppLanguageController.instance.isVietnamese
+                            ? 'NHANH HƠN 50%'
+                            : '50% FASTER FIT',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w800,
@@ -575,7 +579,9 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'Elevate Your\nEveryday Style.',
+                      AppLanguageController.instance.isVietnamese
+                          ? 'Định Hình Phong Cách\nThường Ngày.'
+                          : 'Elevate Your\nEveryday Style.',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 21,
                         fontWeight: FontWeight.w900,
@@ -606,7 +612,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'Try AI Camera →',
+                          AppLanguageController.instance.t.discoveryTryAiCameraBtn,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
@@ -775,6 +781,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
 
   /// Dedicated "Gửi Yêu Cầu Phối Đồ" (Custom Styling Brief) Entry Card
   Widget _buildCustomStylingBriefCard() {
+    final t = AppLanguageController.instance.t;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -808,7 +815,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  '1-ON-1 PERSONAL STYLING',
+                  t.isVi ? 'PHỐI ĐỒ CÁ NHÂN 1-KÈM-1' : '1-ON-1 PERSONAL STYLING',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w800,
@@ -818,7 +825,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
                 ),
               ),
               Text(
-                AppLanguageController.instance.isEnglish ? 'ESCROW PROTECTED' : 'BẢO VỆ KÝ QUỸ',
+                t.isVi ? 'BẢO VỆ KÝ QUỸ' : 'ESCROW PROTECTED',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w800,
@@ -830,7 +837,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Cần Phối Đồ Riêng Theo Vóc Dáng?',
+            t.discoveryCustomStylingTitle,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 16.5,
               fontWeight: FontWeight.w900,
@@ -840,7 +847,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Gửi yêu cầu cho Stylist • Bảo vệ 100% qua Ký quỹ Escrow',
+            t.discoveryCustomStylingSubtitle,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -861,7 +868,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
               ),
               alignment: Alignment.center,
               child: Text(
-                'Gửi Yêu Cầu Phối Đồ →',
+                t.discoveryRequestStylingBtn,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
@@ -878,6 +885,14 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
 
   /// 4. Category Pills Row: Pure Editorial Typography (Zero AI Icons)
   Widget _buildCategoryPills() {
+    final isVi = AppLanguageController.instance.isVietnamese;
+    final viCategories = const [
+      'Tất cả',
+      'Streetwear',
+      'Editorial',
+      'Y2K Pop',
+      'Minimal',
+    ];
     return SizedBox(
       height: 38,
       child: ListView.separated(
@@ -886,7 +901,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final isSelected = _selectedCategoryIndex == index;
-          final label = _categories[index];
+          final label = isVi ? viCategories[index] : _categories[index];
 
           return SpringInteractiveCard(
             scaleFactor: 0.94,
@@ -945,7 +960,9 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
             const Icon(Icons.auto_awesome_mosaic, color: Colors.black26, size: 36),
             const SizedBox(height: 12),
             Text(
-              'Chưa có Lookbook cho phong cách này',
+              AppLanguageController.instance.isVietnamese
+                  ? 'Chưa có Lookbook cho phong cách này'
+                  : 'No Lookbooks found for this style',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w800,
@@ -954,7 +971,9 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Hãy chọn "All Looks" để xem toàn bộ dáng mẫu',
+              AppLanguageController.instance.isVietnamese
+                  ? 'Hãy chọn "Tất cả" để xem toàn bộ dáng mẫu'
+                  : 'Select "All Looks" to browse all poses',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 11.5,
                 color: Colors.black38,
@@ -1200,7 +1219,10 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
                       final rawCreator = item['creatorInfo'] as String? ?? 'Maya Trần • 3 Items';
                       final creatorParts = rawCreator.split('•');
                       final stylistName = creatorParts[0].trim();
-                      final itemsCount = creatorParts.length > 1 ? creatorParts[1].trim() : '3 Items';
+                      final rawCount = creatorParts.length > 1 ? creatorParts[1].trim() : '3 Items';
+                      final itemsCount = AppLanguageController.instance.isVietnamese
+                          ? rawCount.replaceAll('Items', 'món đồ')
+                          : rawCount.replaceAll('món đồ', 'Items');
 
                       return Row(
                         children: [
@@ -1268,7 +1290,7 @@ class _DiscoveryFeedScreenState extends State<DiscoveryFeedScreen> {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        'Chụp Dáng AI →',
+                        AppLanguageController.instance.t.discoveryTryAiCameraBtn,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,

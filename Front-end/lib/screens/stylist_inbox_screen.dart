@@ -711,7 +711,7 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Yêu Cầu Của Khách (Client Brief)',
+                        l.isEnglish ? 'Client Styling Brief' : 'Yêu Cầu Của Khách',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.plusJakartaSans(
@@ -733,7 +733,7 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
                   );
                 },
                 child: Text(
-                  'Xem Bill VietQR →',
+                  l.isEnglish ? 'View VietQR Bill →' : 'Xem Bill VietQR →',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 11.5,
                     color: AppColors.rosePink,
@@ -767,7 +767,7 @@ class _StylistInboxScreenState extends State<StylistInboxScreen> {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(
-                'Tone màu khách chọn:',
+                l.isEnglish ? 'Selected Palette:' : 'Tone màu khách chọn:',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
